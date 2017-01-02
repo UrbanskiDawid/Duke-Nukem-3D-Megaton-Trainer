@@ -21,48 +21,49 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 
 using namespace std;
 
-HANDLE hProcess;//handle to game proces
+HANDLE hProcess;//handle to game process
 UINT_PTR hBase;//base addres of game module
 
 namespace DN3D {
 
-	//note: https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/duke3d.h
+	/*
+	note: https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/duke3d.h
 
-	//note: moveactors (headspritestat[1])
-    //https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/actors.c#L3139
+	note: moveactors (headspritestat[1])
+    https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/actors.c#L3139
 
-	//note: moveexplosions (headspritestat[5])
-	//https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/actors.c#L4395
+	note: moveexplosions (headspritestat[5])
+	https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/actors.c#L4395
 
-	//note: moveeffectors (headspritestat[3]) note boss is effector:P
-    //https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/actors.c#L4928
+	note: moveeffectors (headspritestat[3]) note boss is effector:P
+    https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/actors.c#L4928
 
-	//=================================================================
-	const UINT_PTR Xpos_offset = 0x15CBD74;//duke3d.exe + 15CBD74 size 2bytes
-	//const UINT_PTR X??_offset              = 0x15CBD76;// 2bytes
-	const UINT_PTR Ypos_offset = 0x15CBD78;//duke3d.exe + 15CBD78 size 2bytes
-	//const UINT_PTR Y??_offset              = 0x15CBD7A;// 2bytes
-	const UINT_PTR Zpos_offset = 0x15CBD7C;//duke3d.exe + 15CBD7C size 2bytes
-	//const UINT_PTR Z??_offset              = 0x15CBD7E;// 2bytes
+	//items amounts:
+	source: https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/game.c#L6264
 
-	const UINT_PTR PLAYERPOS_offset = 0x15CBD74;
-	struct sPlayerPos {
-		int Xpos;
-		int wtf1;//65535(default) or 0
-		int Ypos;
-		int wtf2;//65535 or 0 (default)
-		int Zpos;
-		int wtf3;//65535(default) or 0
-	};
-	//===========================================================================================
+		ps[myconnectindex].ammo_amount[GROW_WEAPON] = 50;
+		ps[myconnectindex].steroids_amount = 400;
+		ps[myconnectindex].heat_amount = 1200;
+		ps[myconnectindex].boot_amount = 200;
+		ps[myconnectindex].shield_amount = 100;
+		ps[myconnectindex].scuba_amount = 6400;
+		ps[myconnectindex].holoduke_amount = 2400;
+		ps[myconnectindex].jetpack_amount = 1600;
+		ps[myconnectindex].firstaid_amount = max_player_health;
+		ps[myconnectindex].got_access = 7;
 
-	struct sEnemie {
+	*/
+
+	const string WEAPON_NAMES[] = { "mighty leg", "pistol","shotgun","ripper","RPG","pipebomb","shrinker","devastator","laserTripbomb","freezeThrower" };
+
+	//note: BUILD engine sprite
+	//https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Engine/src/build.h#L124
+	struct sSprite {
 		uint32_t posZ;    //4B
 		uint32_t posX;    //4B
 		uint32_t posY;    //4B
 		uint8_t  rotateZ; //1B
 		uint8_t  wtf1;    //1B
-
 //source: https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/names.h#L27
 		uint16_t type;    //2B 
 //630 ladydown,869 geisha nude,1296 lady up,1313striperA,1317striperB,1321lady, 1323ladyup2, 1325ladydance, 1334,ladysit, 1395ladyDance2,1680 pig
@@ -72,110 +73,67 @@ namespace DN3D {
 		uint8_t  wtf4;    //1B
 		uint8_t  width;   //1B
 		uint8_t  height;  //1B
-		uint8_t wtf[20];  //20B
-		 int16_t health;  //2B  //-32768 - 0 -32767 (if <0 can't kill)
-		 //sizeof 44B
+		uint8_t  wtf[20]; //20B
+		int16_t  health;  //2B  //-32768 - 0 -32767 (if <0 can't kill)
+		//sizeof 44B
 	};
 
-	const UINT POSA_offset              =   0x15CBDEC;//duke3d.exe + 15CBDEC size 2bytes (rotation)
-	const UINT POS_ZY                   =   0x15CBDB4;//duke3d.exe + 15CBDB4 size 2bytes
-	const UINT STATS_TIME               =   0x15CBDC4;//duke3d.exe + 15CBDC4 size 4bytes (starts at 0 and goes up) [value 26= 1sec]
-	const UINT STATS_KILLS_CURR         =   0x15CBF08;//duke3d.exe + 15CBF08      size 4 byte
-	const UINT STATS_KILLS_MAX          =   0x15CBF04;//duke3d.exe + 15CBF08 - 4 size 4 byte
-	const UINT STATS_SECRETS_CURR       =   0x15CBF00;//duke3d.exe + 15CBF08 - 8
-	const UINT STATS_SECRETS_MAX        =   0x15CBEFC;//duke3d.exe + 15CBF08 - C	
-	const UINT POS_ONGROUND             =   0x15CBEB2;//duke3d.exe + 15CBEB2 size 1byte
-	const UINT HEALTH_Offset            =   0x15CBDF6;//22855158 //duke3d.exe + 0x15CBDF6 size 1byte
-/*												0x15CBDF7
-												0x15CBDF8
-												0x15CBDF9
-												0x15CBDFA
-												0x15CBDFB
-												0x15CBDFC
-												0x15CBDFD
-												0x15CBDFE
-												0x15CBDFF
-												0x15CBDFF
-												0x15CBE00
-												0x15CBE01
-												0x15CBE02
-												0x15CBE03
-												0x15CBE04
-												0x15CBE05
-												0x15CBE06
-												0x15CBE07
-												0x15CBE08
-												0x15CBE09
-												0x15CBE10
-												0x15CBE11
-												0x15CBE12
-												0x15CBE13
-												0x15CBE14
-												0x15CBE15
-												0x15CBE16
-												0x15CBE17 */
-	const UINT_PTR CURRENTWEAPONID_Offset   =   0x15CBE18;//22855192 //duke3d.exe + 0x15CBE18 size 1byte
-	const UINT_PTR ARMOR_Offset             = 0x15CBE96;//22855318 //duke3d.exe + 0x15CBE96 size 1byte
-	const UINT_PTR WEAPON_ammoOffset        = 0x15CBDFC;//22855164 //duke3d.exe + 0x15CBDFC size  9 bytes = [9x byte(1byte)]
-	//whats here?0x15CBEF0 - 0x15CBDFC unknown 244 bytes
-
-	//source: https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/game.c#L6553
-	//ps[myconnectindex].got_access =              7;
-	const UINT_PTR CARDS_offset             = 0x15CBE3C;//22855228 size 1 byte [8 bits: 0,0,0,0,0,Y,R,B B=blue,R=red,Y=yellow]
-
-	const UINT_PTR WEAPON_enableOffset      = 0x15CBEDE;//22855390 //duke3d.exe + 0x15CBEDE size 18 bytes = [9x short(2bytes)]
-	const UINT_PTR CURRENTWEAPONAMMO_Offset = 0x15F1BCA;//23010250 //duke3d.exe + 0x15F1BCA size 1byte
-
-	const UINT_PTR CAMERAYrot_Offset        = 0x15CBD80;//	duke3d.exe + 15CBD80 size 2byte
-	const UINT_PTR CAMERAXrot_Offset        = 0x15CBDEC;//	duke3d.exe + 15CBDEC size 2byte
-	
-	const UINT_PTR playerXv = 0x15CBDAE;// duke3d.exe + 15CBDAE
-	const UINT_PTR playerYv = 0x15CBDB2;// duke3d.exe + 15CBDAE
-	const UINT_PTR playerZv = 0x15CBDB6;// duke3d.exe + 15CBDAE
-	//=================================================================
-
-	const string WEAPON_NAMES[] = { "mighty leg", "pistol","shotgun","ripper","RPG","pipebomb","shrinker","devastator","laserTripbomb","freezeThrower" };
-
-	struct sWeaponsAmmo{
-		short pistol;		//+0x2
-		short shotgun;      //+0x4
-		short ripper;       //+0x6
-		short RPG;          //+0x8
-		short pipebomb;     //+0xA
-		short shrinker;     //+0xC
-		short devastator;   //+0xD
-		short laserTripbomb;//+0xE
-		short freezeThrower;//+0x10
+	const UINT POSA_offset              = 0x15CBDEC;//duke3d.exe + 15CBDEC size 2bytes (rotation)
+	const UINT POS_ZY                   = 0x15CBDB4;//duke3d.exe + 15CBDB4 size 2bytes
+	const UINT STATS_TIME               = 0x15CBDC4;//duke3d.exe + 15CBDC4 size 4bytes (starts at 0 and goes up) [value 26= 1sec]
+	const UINT STATS_KILLS_CURR         = 0x15CBF08;//duke3d.exe + 15CBF08 size 4 byte
+	const UINT STATS_KILLS_MAX          = 0x15CBF04;//duke3d.exe + 15CBF08 - 4 size 4 byte
+	const UINT STATS_SECRETS_CURR       = 0x15CBF00;//duke3d.exe + 15CBF08 - 8
+	const UINT STATS_SECRETS_MAX        = 0x15CBEFC;//duke3d.exe + 15CBF08 - C	
+	const UINT POS_ONGROUND             = 0x15CBEB2;//duke3d.exe + 15CBEB2 size 1byte
+	const UINT PLAYERPOS_offset         = 0x15CBD74;//duke3d.exe + 15CBD74 size 2bytes
+	struct sPlayerPos {
+		int Xpos;//0x15CBD74
+		int wtf1;//0x15CBD76  65535(default) or 0
+		int Ypos;//0x15CBD78
+		int wtf2;//0x15CBD7A  65535 or 0 (default)
+		int Zpos;//0x15CBD7C
+		int wtf3;//0x15CBD7E  65535(default) or 0
 	};
-
+	const UINT CAMERAYrot_Offset        = 0x15CBD80;//duke3d.exe + 15CBD80 size 2byte
+	const UINT CAMERAXrot_Offset        = 0x15CBDEC;//duke3d.exe + 15CBDEC size 2byte
+	const UINT playerXv                 = 0x15CBDAE;//duke3d.exe + 15CBDAE
+	const UINT playerYv                 = 0x15CBDB2;//duke3d.exe + 15CBDAE
+	const UINT playerZv                 = 0x15CBDB6;//duke3d.exe + 15CBDAE
+	const UINT HEALTH_Offset            = 0x15CBDF6;//duke3d.exe + 0x15CBDF6 size 1byte
+	const UINT WEAPON_ammoOffset        = 0x15CBDFA;//duke3d.exe + 0x15CBDFC size 29 bytes = [10x 2byte]
+	struct sWeaponsAmmo {
+		short leg;          //0x15CBDFA
+		short pistol;		//0x15CBDFC
+		short shotgun;      //0x15CBDFE
+		short ripper;       //0x15CBE00
+		short RPG;          //0x15CBE02
+		short pipebomb;     //0x15CBE04
+		short shrinker;     //0x15CBE06
+		short devastator;   //0x15CBE08
+		short laserTripbomb;//0x15CBE0A
+		short freezeThrower;//0x15CBE0B
+	};
+	const UINT CURRENTWEAPONID_Offset   = 0x15CBE18;//duke3d.exe + 0x15CBE18 size 1byte
+													//source: https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/game.c#L6553
+													//ps[myconnectindex].got_access =              7;
+	const UINT CARDS_offset             = 0x15CBE3C;//duke3d.exe + 0x15CBE3C size 1 byte [8 bits: 0,0,0,0,0,Y,R,B B=blue,R=red,Y=yellow]
+	const UINT ARMOR_Offset             = 0x15CBE96;//duke3d.exe + 0x15CBE96 size 1byte
+	const UINT WEAPON_enableOffset      = 0x15CBEDD;//duke3d.exe + 0x15CBEDE size 18 bytes = [9x short(2bytes)]
 	struct sWeaponsEnabled {
-		byte pistol;
-		byte shotgun;
-		byte ripper;
-		byte RPG;
-		byte pipebomb;
-		byte shrinker;
-		byte devastator;
-		byte laserTripbomb;
-		byte freezeThrower;
+		byte leg;           //0x15CBEDE
+		byte pistol;        //0x15CBEDF
+		byte shotgun;       //0x15CBEE0
+		byte ripper;        //0x15CBEE1
+		byte RPG;           //0x15CBEE2
+		byte pipebomb;      //0x15CBEE3
+		byte shrinker;      //0x15CBEE4
+		byte devastator;    //0x15CBEE5
+		byte laserTripbomb; //0x15CBEE6
+		byte freezeThrower; //0x15CBEE7
 	};
+	const UINT CURRENTWEAPONAMMO_Offset = 0x15F1BCA;//duke3d.exe + 0x15F1BCA size 1byte
 
-//items
-//source: https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Game/src/game.c#L6264
-/*
-	ps[myconnectindex].ammo_amount[GROW_WEAPON] = 50;
-
-	ps[myconnectindex].steroids_amount = 400;
-	ps[myconnectindex].heat_amount = 1200;
-	ps[myconnectindex].boot_amount = 200;
-	ps[myconnectindex].shield_amount = 100;
-	ps[myconnectindex].scuba_amount = 6400;
-	ps[myconnectindex].holoduke_amount = 2400;
-	ps[myconnectindex].jetpack_amount = 1600;
-	ps[myconnectindex].firstaid_amount = max_player_health;
-
-	ps[myconnectindex].got_access = 7;
-	*/
 }
 
 //=========================================================================================================================================================================
@@ -189,11 +147,12 @@ void printWeapons(
 	byte *sEnabled = reinterpret_cast<byte*>(&enabled);
 
 	for (int i = 0; i <=8; i++) {
-		bitset<8> flag(sEnabled[i]); bool enabled = ((int)flag[0] == 1);
+		//bitset<8> flag(sEnabled[i]);
+		bool enabled = (sEnabled[i] == 1);
 
 		cout
 			//name
-			<< std::setw(15) << names[i+1/*skip leg*/] << " "
+			<< std::setw(15) << names[i] << " "
 			//ammo
 			<< std::setw(5) << std::dec << (int)sAmmo[i] << " @ 0x" << std::hex << (ammoAddr + 2*i)
 			//enabled
@@ -261,8 +220,8 @@ bool init() {
  * update corsair keyboard color leds
  */
 void updateKeyboard(
-	int health,
-	int armor,
+	const int health,
+	const int armor,
 	const DN3D::sWeaponsEnabled & weaponsEnabled,
 	const DN3D::sWeaponsAmmo & weaponsAmmo)
 {
@@ -287,6 +246,7 @@ void updateKeyboard(
 	}
 
 	
+	setKeyColor(CLK_1, (weaponsEnabled.leg ? COLOR_WHITE : COLOR_BLACK));
 	setKeyColor(CLK_2, (weaponsEnabled.pistol ? COLOR_WHITE : COLOR_BLACK));
 	setKeyColor(CLK_3, (weaponsEnabled.shotgun? COLOR_WHITE : COLOR_BLACK));
 	setKeyColor(CLK_4, (weaponsEnabled.ripper ? COLOR_WHITE : COLOR_BLACK));
@@ -419,10 +379,10 @@ int main()
 		const int w = 10;
 		static INT start = 0;
 		static INT_PTR idx = hBase + 0x19D9860;
-		cout << "list of enemies:" << std::dec<<sizeof(DN3D::sEnemie) << "B" << endl;
+		cout << "list of enemies:" << std::dec<<sizeof(DN3D::sSprite) << "B" << endl;
 		//0x26
 		//Enemies
-		DN3D::sEnemie enemie;
+		DN3D::sSprite enemie;
 		for(int i=80+ start;i!=-1+ start;i--){
 			UINT_PTR enemie1Addr = hBase + 0x19D9860 + sizeof(enemie)*i;
 			if (enemie1Addr < hBase) {
