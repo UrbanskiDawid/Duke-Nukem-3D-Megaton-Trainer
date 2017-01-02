@@ -234,7 +234,7 @@ int main()
 		//reset console cursor
 		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), { 0, 8 });
 
-	    //timeAddr TODO: test
+	    //timeAddr
 		memory::read(hProcess, timeAddr, time);
 		long timeSec = time / 26;
 		std::cout << "time: "<<std::dec << timeSec << "sec" << endl;

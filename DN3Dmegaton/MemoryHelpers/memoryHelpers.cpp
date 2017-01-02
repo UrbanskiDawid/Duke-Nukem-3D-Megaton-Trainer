@@ -13,6 +13,10 @@ namespace memory {
 
 	SIZE_T stBytes = 0;
 
+	void read(const HANDLE & hProcess, const UINT_PTR &addr, int32_t &ret) {
+		ReadProcessMemory(hProcess, (LPVOID)addr, &ret, sizeof(int32_t), &stBytes);
+	}
+
 	void read1Byte(const HANDLE & hProcess, const UINT_PTR &addr, byte &ret) {
 		ReadProcessMemory(hProcess, (LPVOID)addr, &ret, 1, &stBytes); 
 	}
