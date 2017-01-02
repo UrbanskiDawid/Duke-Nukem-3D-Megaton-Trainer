@@ -37,7 +37,7 @@ void printWeapons(
 		//bitset<8> flag(sEnabled[i]);
 		bool enabled = (sEnabled[i] == 1);
 
-		cout
+		std::cout
 			//name
 			<< std::setw(15) << DN3D::WEAPON_NAMES[i] << " "
 			//ammo
@@ -57,28 +57,28 @@ bool init() {
 	//find window/process
 	//====================================================
 	DWORD processId = -1;
-	cout << "looking for '" << WND_TITLE << "' window... ";
+	std::cout << "looking for '" << WND_TITLE << "' window... ";
 	HWND hWindow = FindWindowA(0, WND_TITLE);
 	GetWindowThreadProcessId(hWindow, &processId);
 	if (processId == -1)
 	{
 		return false;
 	} else {
-		cout << OK << endl;
+		std::cout << OK << endl;
 	}
 
 	//open proces
 	//====================================================
-	cout << "opening process PID:" << processId << " ... ";
+	std::cout << "opening process PID:" << processId << " ... ";
 	hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, processId);
 	if (hProcess == 0) {
 		return false;
 	}
-	cout << OK << endl;
+	std::cout << OK << endl;
 
 	//base adress [GetModuleHandleA("duke3d.exe"); ??]
 	//====================================================
-	cout << "getting base address:" << processId << " ... ";	
+	std::cout << "getting base address:" << processId << " ... ";
 	HMODULE hModule;
 	DWORD cbNeeded;
 	if (!EnumProcessModulesEx(hProcess, &hModule, sizeof(hModule), &cbNeeded, LIST_MODULES_32BIT | LIST_MODULES_64BIT))
@@ -86,17 +86,17 @@ bool init() {
 		return false;
 	}
 	hBase = (UINT_PTR)hModule;
-	cout << OK << " [The base is 0x" << hBase << "]" << endl; //Print the pointer
+	std::cout << OK << " [The base is 0x" << hBase << "]" << endl; //Print the pointer
 	
 	//Corsair CUE (optional)
 	//====================================================
-	cout << "connecting to Corsair CUE ... ";
+	std::cout << "connecting to Corsair CUE ... ";
 	const auto error = CorsairKeyboard::init();
 	if (error) {
-		cout << "Handshake failed " << CorsairKeyboard::toString(error) << std::endl;
+		std::cout << "Handshake failed " << CorsairKeyboard::toString(error) << std::endl;
 	}else {
 		CorsainKeyBoardConnected = true;
-		cout << OK << endl;
+		std::cout << OK << endl;
 	}
 
 	return true;	//done
@@ -108,11 +108,14 @@ bool init() {
 void updateKeyboard(
 	const int health,
 	const int armor,
+	const uint16_t currentItem,
 	const DN3D::sWeaponsEnabled & weaponsEnabled,
 	const DN3D::sWeaponsAmmo & weaponsAmmo)
 {
-
 	if (!CorsainKeyBoardConnected) return;
+
+	static bool BLINK = false;
+	BLINK = !BLINK;
 
 	using namespace CorsairKeyboard;
 
@@ -142,15 +145,30 @@ void updateKeyboard(
 	setKeyColor(CLK_8, (weaponsEnabled.devastator ? COLOR_WHITE : COLOR_BLACK));
 	setKeyColor(CLK_9, (weaponsEnabled.laserTripbomb ? COLOR_WHITE : COLOR_BLACK));
 	setKeyColor(CLK_0, (weaponsEnabled.freezeThrower ? COLOR_WHITE : COLOR_BLACK));
+
+	CorsairLedId currentItemkey = CLI_Invalid;
+	switch(currentItem) {
+		case DN3D::ITEMID_steroids: currentItemkey  = CLK_S; break;
+		case DN3D::ITEMID_jetpack:  currentItemkey  = CLK_J; break;
+		case DN3D::ITEMID_medKit:   currentItemkey  = CLK_M; break;
+		case DN3D::ITEMID_holoduke: currentItemkey  = CLK_H; break;
+		case DN3D::ITEMID_nightVision:currentItemkey= CLK_N; break;
+	}
+	
+	setKeyColor(CLK_S, (currentItem==DN3D::ITEMID_steroids  && BLINK ? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_J, (currentItem==DN3D::ITEMID_jetpack   && BLINK ? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_M, (currentItem == DN3D::ITEMID_medKit  && BLINK ? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_H, (currentItem == DN3D::ITEMID_holoduke&& BLINK ? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_N, (currentItem == DN3D::ITEMID_nightVision&& BLINK ? COLOR_WHITE : COLOR_BLACK));
 }
 
 int main()
 {
 	SetConsoleTitleA(PROGRAM_NAME);
-	cout << PROGRAM_NAME<<endl << endl;
+	std::cout << PROGRAM_NAME<<endl << endl;
 	Sleep(2000);
 	if (!init()) {
-		cout << FAIL << endl;
+		std::cout << FAIL << endl;
 		int a; cin >> a;
 		return 1;
 	}
@@ -168,11 +186,13 @@ int main()
 	const UINT_PTR timeAddr = hBase + DN3D::STATS_TIME;
 	const UINT_PTR cameraYrotAddr = hBase + DN3D::CAMERAYrot_Offset;
 	const UINT_PTR cameraXrotAddr = hBase + DN3D::CAMERAXrot_Offset;
+	const UINT_PTR currentItemAddr = hBase + DN3D::CURRENT_ITEM;
 	//====================================================
 
 	DN3D::sWeaponsAmmo weaponsAmmo;
 	DN3D::sWeaponsEnabled weaponsEnabled;
 	DN3D::sPlayerPos playerPos;
+	uint16_t currentItem;
 	byte currentWeaponId;
 	byte currentWeaponAmmo;
 	byte cards;
@@ -195,13 +215,13 @@ int main()
 		int32_t time;
 		ReadProcessMemory(hProcess, (LPVOID)timeAddr, &time, sizeof(time), &stBytes);
 		long timeSec = time / 26;
-		cout << "time: "<<std::dec << timeSec << "sec" << endl;
+		std::cout << "time: "<<std::dec << timeSec << "sec" << endl;
 
 		//pos
 		//posyAddr
 		//memory::read2Byte(posyAddr, posy);
 		ReadProcessMemory(hProcess, (LPVOID)playerPosAddr, &playerPos, sizeof(playerPos), &stBytes);
-		cout << std::dec
+		std::cout << std::dec
 			<< "  postion: "
 			<< "    X" << std::setw(10) << playerPos.Xpos
 			<< "    Y" << std::setw(10) << playerPos.Ypos
@@ -210,7 +230,7 @@ int main()
 
 		memory::read1Byte(hProcess, cameraXrotAddr, cameraXrot);
 		memory::read1Byte(hProcess, cameraYrotAddr, cameraYrot);
-		cout << std::dec << " camera "
+		std::cout << std::dec << " camera "
 			<< " X:" << (int)cameraXrot
 			<< " Y:" << (int)cameraYrot
 			<< endl;
@@ -219,32 +239,47 @@ int main()
 		//---------------------------------------
 		memory::read1Byte(hProcess, healthAddr, health);
 		
-		cout << std::setw(10) << "HEALTH: " <<std::dec<< (int)health<<endl;
+		std::cout << std::setw(10) << "HEALTH: " <<std::dec<< (int)health<<endl;
 		if (health < 50) { memory::writeByte(hProcess, healthAddr, health+5); }
 
 		//ARMOR
 		//---------------------------------------
 		memory::read1Byte(hProcess, armorAddr, armor);
 		if (armor < 50) { memory::writeByte(hProcess, armorAddr, armor + 5); }
-		cout << std::setw(10) << "ARMOR: " << std::dec << (int)armor<<endl;
+		std::cout << std::setw(10) << "ARMOR: " << std::dec << (int)armor<<endl;
 
 		
 		//currentWeapon
         //---------------------------------------
 		memory::read1Byte(hProcess, currentWeapon_id_Addr, currentWeaponId);
 		memory::read1Byte(hProcess, currentWeapon_ammo_Addr, currentWeaponAmmo);
-		cout << "Curent weapon:"
+		std::cout << "Curent weapon:"
 			<< std::setw(15) << DN3D::WEAPON_NAMES[(int)currentWeaponId] << "(" << (int)currentWeaponId << ")" 
 			<< "  ammo:" << std::setw(15) << (int)currentWeaponAmmo
 			<< endl;
 		
+		//currentItem
+		//---------------------------------------
+		memory::read2Byte(hProcess, currentItemAddr, currentItem);		
+		string itemName;
+		switch(currentItem) {
+		    case 0: itemName = "nothing"; break;
+		    case DN3D::ITEMID_steroids: itemName = "steroids"; break;
+			case DN3D::ITEMID_jetpack:  itemName = "jetpack"; break;
+			case DN3D::ITEMID_medKit:  itemName = "medpack"; break;
+			case DN3D::ITEMID_holoduke: itemName = "holoduke"; break;
+			case DN3D::ITEMID_nightVision:itemName = "nightVision"; break;
+			default:   itemName = "?";  break;
+		}
+		std::cout << "Curent item:  "<<itemName<< "("<<std::dec<<currentItem <<")"<< endl;
+
 		//CARDS
 		//---------------------------------------
 		memory::read1Byte(hProcess, cardsAddr, cards);
 		bool cardBlue  = ((cards & 0b00000001) == 1);
 		bool cardRed   = ((cards & 0b00000010) == 1);
 		bool cardYellow= ((cards & 0b00000100) == 1);
-		cout << "Cards"
+		std::cout << "Cards"
 			<< " blue:"   << (cardBlue ? YES : NO )
 			<< " red:"    << (cardRed ? YES : NO)
 			<< " yellow:" << (cardYellow ? YES : NO)
@@ -264,20 +299,20 @@ int main()
 		const int w = 10;
 		static INT start = 0;
 		static INT_PTR idx = hBase + 0x19D9860;
-		cout << "list of enemies:" << std::dec<<sizeof(DN3D::sSprite) << "B" << endl;
+		std::cout << "list of enemies:" << std::dec<<sizeof(DN3D::sSprite) << "B" << endl;
 		//0x26
 		//Enemies
 		DN3D::sSprite enemie;
 		for(int i=80+ start;i!=-1+ start;i--){
 			UINT_PTR enemie1Addr = hBase + 0x19D9860 + sizeof(enemie)*i;
 			if (enemie1Addr < hBase) {
-				cout << "---" << endl;
+				std::cout << "---" << endl;
 				continue;
 			}
 
 			ReadProcessMemory(hProcess, (LPVOID)enemie1Addr, &enemie, sizeof(enemie), &stBytes);
 			if (idx == enemie1Addr) {
-				cout << ">";
+				std::cout << ">";
 				if (GetKeyState(VK_NUMPAD5) & 0x8000) {
 					enemie.type = 0;
 					WriteProcessMemory(hProcess, (LPVOID)enemie1Addr, &enemie, sizeof(enemie), &stBytes);
@@ -288,7 +323,7 @@ int main()
 				WriteProcessMemory(hProcess, (LPVOID)enemie1Addr, &enemie, sizeof(enemie), &stBytes);
 			}
 
-			cout
+			std::cout
 				<< " 0x"<<std::hex<< (enemie1Addr- hBase)<< "0x"<<(enemie1Addr)
 				<< std::dec
 				<< " pos: ["
@@ -308,7 +343,7 @@ int main()
 				<< " width"
 			;
 			//for (int16_t b : enemie.wtf)cout <<" "<<std::setw(w)<< (UINT)b;
-			cout <<" H: " << std::setw(w) << (UINT) enemie.health<< endl;
+			std::cout <<" H: " << std::setw(w) << (UINT) enemie.health<< endl;
 		}
 
 		/*
@@ -326,12 +361,16 @@ int main()
 		if (GetKeyState(VK_NUMPAD8) & 0x8000) { start += 50; idx += sizeof(enemie)*50; }
 		if (GetKeyState(VK_NUMPAD2) & 0x8000) { start -= 50; idx -= sizeof(enemie)*50; }
 
-		updateKeyboard(health,armor,weaponsEnabled,weaponsAmmo);
+		updateKeyboard(
+			health,
+			armor,
+			currentItem,
+			weaponsEnabled,weaponsAmmo);
 
 		Sleep(250);
 	}
 
-	cout << "END";
+	std::cout << "END";
 	CloseHandle(hProcess);
 	CorsairKeyboard::close();
 	

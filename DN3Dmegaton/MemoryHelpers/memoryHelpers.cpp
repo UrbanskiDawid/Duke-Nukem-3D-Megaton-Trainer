@@ -17,6 +17,10 @@ namespace memory {
 		ReadProcessMemory(hProcess, (LPVOID)addr, &ret, 1, &stBytes); 
 	}
 
+	void read2Byte(const HANDLE &hProcess, const UINT_PTR &addr, uint16_t &ret) {
+		ReadProcessMemory(hProcess, (LPVOID)addr, &ret, 2, &stBytes);
+	}
+
 	void read2Byte(const HANDLE &hProcess, const UINT_PTR &addr, int &ret) {
 		ReadProcessMemory(hProcess, (LPVOID)addr, &ret, 2, &stBytes);
 	}
