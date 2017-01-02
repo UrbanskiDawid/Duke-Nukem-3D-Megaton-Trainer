@@ -22,35 +22,9 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 
 using namespace std;
 
-HANDLE hProcess;//handle to game process
 UINT_PTR hBase;//base addres of game module
 
-//=========================================================================================================================================================================
-void printWeapons(
-	const UINT_PTR &ammoAddr, DN3D::sWeaponsAmmo& ammo,
-	const UINT_PTR &enabledAddr, DN3D::sWeaponsEnabled & enabled)
-{
-	short *sAmmo   = reinterpret_cast<short*>(&ammo);
-	byte *sEnabled = reinterpret_cast<byte*>(&enabled);
-
-	for (int i = 0; i <=8; i++) {
-		//bitset<8> flag(sEnabled[i]);
-		bool enabled = (sEnabled[i] == 1);
-
-		std::cout
-			//name
-			<< std::setw(15) << DN3D::WEAPON_NAMES[i] << " "
-			//ammo
-			<< std::setw(5) << std::dec << (int)sAmmo[i] << " @ 0x" << std::hex << (ammoAddr + 2*i)
-			//enabled
-			<< (enabled ? YES : NO) << " @ 0x" << std::hex << (enabledAddr + sizeof(byte)*i)
-			//<< "0b"<<flag
-
-			<< endl;
-	}
-}
-
-bool CorsainKeyBoardConnected = false;
+bool CorsainKeyBoardConnected = false;//is connected to Corsair CUE SDK
 
 bool init() {
 
@@ -70,8 +44,8 @@ bool init() {
 	//open proces
 	//====================================================
 	std::cout << "opening process PID:" << processId << " ... ";
-	hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, processId);
-	if (hProcess == 0) {
+	memory::hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, processId);
+	if (memory::hProcess == 0) {
 		return false;
 	}
 	std::cout << OK << endl;
@@ -81,7 +55,7 @@ bool init() {
 	std::cout << "getting base address:" << processId << " ... ";
 	HMODULE hModule;
 	DWORD cbNeeded;
-	if (!EnumProcessModulesEx(hProcess, &hModule, sizeof(hModule), &cbNeeded, LIST_MODULES_32BIT | LIST_MODULES_64BIT))
+	if (!EnumProcessModulesEx(memory::hProcess, &hModule, sizeof(hModule), &cbNeeded, LIST_MODULES_32BIT | LIST_MODULES_64BIT))
 	{
 		return false;
 	}
@@ -101,6 +75,7 @@ bool init() {
 
 	return true;	//done
 }
+
 
 /*
  * update corsair keyboard color leds
@@ -133,7 +108,6 @@ void updateKeyboard(
 		ledColor.ledId = ledId;
 		CorsairSetLedsColors(1, &ledColor);
 	}
-
 	
 	setKeyColor(CLK_1, (weaponsEnabled.leg ? COLOR_WHITE : COLOR_BLACK));
 	setKeyColor(CLK_2, (weaponsEnabled.pistol ? COLOR_WHITE : COLOR_BLACK));
@@ -162,6 +136,31 @@ void updateKeyboard(
 	setKeyColor(CLK_N, (currentItem == DN3D::ITEMID_nightVision&& BLINK ? COLOR_WHITE : COLOR_BLACK));
 }
 
+
+void printWeapons(
+	const UINT_PTR &ammoAddr, DN3D::sWeaponsAmmo& ammo,
+	const UINT_PTR &enabledAddr, DN3D::sWeaponsEnabled & enabled)
+{
+	short *sAmmo = reinterpret_cast<short*>(&ammo);
+	byte *sEnabled = reinterpret_cast<byte*>(&enabled);
+
+	for (int i = 0; i <= 8; i++) {
+		//bitset<8> flag(sEnabled[i]);
+		bool enabled = (sEnabled[i] == 1);
+
+		std::cout
+			//name
+			<< std::setw(15) << DN3D::WEAPON_NAMES[i] << " "
+			//ammo
+			<< std::setw(5) << std::dec << (int)sAmmo[i] << " @ 0x" << std::hex << (ammoAddr + 2 * i)
+			//enabled
+			<< (enabled ? YES : NO) << " @ 0x" << std::hex << (enabledAddr + sizeof(byte)*i)
+			//<< "0b"<<flag
+
+			<< endl;
+	}
+}
+
 int main()
 {
 	SetConsoleTitleA(PROGRAM_NAME);
@@ -173,7 +172,7 @@ int main()
 		return 1;
 	}
 
-	//current adresses
+	//current adresses + values
 	//====================================================
 	const UINT_PTR healthAddr = hBase + DN3D::HEALTH_Offset;
 	byte health;
@@ -212,37 +211,26 @@ int main()
 	uint16_t currentItem;
 	//====================================================
 
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-
 	DWORD exitCode;
 	SIZE_T stBytes = 0;
 	while (true) {
 
 		//check if process is running
-		if (!GetExitCodeProcess(hProcess, &exitCode)) break;
+		if (!GetExitCodeProcess(memory::hProcess, &exitCode)) break;
 		if (exitCode != STILL_ACTIVE) break;
 
 		//reset console cursor
 		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), { 0, 8 });
 
 	    //timeAddr TODO: test
-		memory::read(hProcess, timeAddr, time);
+		memory::read(timeAddr, time);
 		long timeSec = time / 26;
 		std::cout << "time: "<<std::dec << timeSec << "sec" << endl;
 
 		//pos
 		//posyAddr
 		//memory::read2Byte(posyAddr, posy);
-		ReadProcessMemory(hProcess, (LPVOID)playerPosAddr, &playerPos, sizeof(playerPos), &stBytes);
+		ReadProcessMemory(memory::hProcess, (LPVOID)playerPosAddr, &playerPos, sizeof(playerPos), &stBytes);
 		std::cout << std::dec
 			<< "  postion: "
 			<< "    X" << std::setw(10) << playerPos.Xpos
@@ -250,8 +238,8 @@ int main()
 			<< "    Z" << std::setw(10) << playerPos.Zpos
 			<< endl;
 
-		memory::read1Byte(hProcess, cameraXrotAddr, cameraXrot);
-		memory::read1Byte(hProcess, cameraYrotAddr, cameraYrot);
+		memory::read1Byte(cameraXrotAddr, cameraXrot);
+		memory::read1Byte(cameraYrotAddr, cameraYrot);
 		std::cout << std::dec << " camera "
 			<< " X:" << (int)cameraXrot
 			<< " Y:" << (int)cameraYrot
@@ -259,18 +247,18 @@ int main()
 
 		//HEALTH
 		//---------------------------------------
-		memory::read1Byte(hProcess, healthAddr, health);
+		memory::read1Byte(healthAddr, health);
 		std::cout << std::setw(10) << "HEALTH: " <<std::dec<< (int)health<<endl;
 		
 		//ARMOR
 		//---------------------------------------
-		memory::read1Byte(hProcess, armorAddr, armor);
+		memory::read1Byte(armorAddr, armor);
 		std::cout << std::setw(10) << "ARMOR: " << std::dec << (int)armor << endl;
 
 		//currentWeapon
         //---------------------------------------
-		memory::read1Byte(hProcess, currentWeapon_id_Addr, currentWeaponId);
-		memory::read1Byte(hProcess, currentWeapon_ammo_Addr, currentWeaponAmmo);
+		memory::read1Byte(currentWeapon_id_Addr, currentWeaponId);
+		memory::read1Byte(currentWeapon_ammo_Addr, currentWeaponAmmo);
 		std::cout << "Curent weapon:"
 			<< std::setw(15) << DN3D::WEAPON_NAMES[(int)currentWeaponId] << "(" << (int)currentWeaponId << ")" 
 			<< "  ammo:" << std::setw(15) << (int)currentWeaponAmmo
@@ -278,7 +266,7 @@ int main()
 		
 		//currentItem
 		//---------------------------------------
-		memory::read2Byte(hProcess, currentItemAddr, currentItem);		
+		memory::read2Byte(currentItemAddr, currentItem);		
 		static string itemName;
 		switch(currentItem) {
 		    case 0: itemName = "nothing"; break;
@@ -293,7 +281,7 @@ int main()
 
 		//CARDS
 		//---------------------------------------
-		memory::read1Byte(hProcess, cardsAddr, cards);
+		memory::read1Byte(cardsAddr, cards);
 		bool cardBlue  = ((cards & 0b00000001) == 1);
 		bool cardRed   = ((cards & 0b00000010) == 1);
 		bool cardYellow= ((cards & 0b00000100) == 1);
@@ -306,14 +294,16 @@ int main()
 
 		//WEAPONS
 		//---------------------------------------
-		ReadProcessMemory(hProcess, (LPVOID)weaponAmmoAddr,  &weaponsAmmo,    sizeof(weaponsAmmo),    &stBytes);
-		ReadProcessMemory(hProcess, (LPVOID)weaponEnableAddr,&weaponsEnabled, sizeof(weaponsEnabled), &stBytes);
+		ReadProcessMemory(memory::hProcess, (LPVOID)weaponAmmoAddr,  &weaponsAmmo,    sizeof(weaponsAmmo),    &stBytes);
+		ReadProcessMemory(memory::hProcess, (LPVOID)weaponEnableAddr,&weaponsEnabled, sizeof(weaponsEnabled), &stBytes);
 
 		printWeapons(
 			weaponAmmoAddr,    weaponsAmmo,  //ammo
 			weaponEnableAddr,  weaponsEnabled//enabled
 		);
 
+		//list of Enemies/sprites
+		//----------------------------------------------------------------
 		const int w = 10;
 		static INT start = 0;
 		static INT_PTR idx = hBase + 0x19D9860;
@@ -328,17 +318,17 @@ int main()
 				continue;
 			}
 
-			ReadProcessMemory(hProcess, (LPVOID)enemie1Addr, &enemie, sizeof(enemie), &stBytes);
+			ReadProcessMemory(memory::hProcess, (LPVOID)enemie1Addr, &enemie, sizeof(enemie), &stBytes);
 			if (idx == enemie1Addr) {
 				std::cout << ">";
 				if (GetKeyState(VK_NUMPAD5) & 0x8000) {
 					enemie.type = 0;
-					WriteProcessMemory(hProcess, (LPVOID)enemie1Addr, &enemie, sizeof(enemie), &stBytes);
+					WriteProcessMemory(memory::hProcess, (LPVOID)enemie1Addr, &enemie, sizeof(enemie), &stBytes);
 				}
 			}
 			if (GetKeyState(VK_NUMPAD6) & 0x8000) {
 				enemie.type = 0;
-				WriteProcessMemory(hProcess, (LPVOID)enemie1Addr, &enemie, sizeof(enemie), &stBytes);
+				WriteProcessMemory(memory::hProcess, (LPVOID)enemie1Addr, &enemie, sizeof(enemie), &stBytes);
 			}
 
 			std::cout
@@ -388,25 +378,24 @@ int main()
 		//========================================================================================
 		//trainer
 			//1.keep min health
-			if (health < 50) { memory::writeByte(hProcess, healthAddr, health + 5); }
+			if (health < 50) { memory::writeByte(healthAddr, health + 5); }
 
 			//2.keep min armor
-			if (armor < 50)  { memory::writeByte(hProcess, armorAddr, armor + 5); }
+			if (armor < 50)  { memory::writeByte(armorAddr, armor + 5); }
 
 			//3.keep current weapon ammo
 			short *sAmmo = reinterpret_cast<short*>(&weaponsAmmo);
 			if (sAmmo[currentWeaponId] < 20) {
 				sAmmo[currentWeaponId] = 20;
-				WriteProcessMemory(hProcess, (LPVOID)weaponAmmoAddr, &weaponsAmmo, sizeof(weaponsAmmo), &stBytes);
+				WriteProcessMemory(memory::hProcess, (LPVOID)weaponAmmoAddr, &weaponsAmmo, sizeof(weaponsAmmo), &stBytes);
 			}
 		//========================================================================================
-		
 
 		Sleep(250);
 	}
 
 	std::cout << "END";
-	CloseHandle(hProcess);
+	CloseHandle(memory::hProcess);
 	CorsairKeyboard::close();
 	
     return 0;
