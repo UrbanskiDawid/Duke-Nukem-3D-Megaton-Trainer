@@ -1,6 +1,5 @@
 #pragma once
 
-//#include "stdafx.h"
 #include <windows.h>
 
 SIZE_T stBytes = 0;

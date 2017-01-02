@@ -37,6 +37,7 @@ namespace DN3D {
 	const UINT ITEMID_holoduke = 768;
 	const UINT ITEMID_nightVision = 1280;
 	const UINT ITEMID_medKit = 256;
+	const UINT ITEMID_scuba = 1536;
 	
 	const char* WEAPON_NAMES[] = { "mighty leg", "pistol","shotgun","ripper","RPG","pipebomb","shrinker","devastator","laserTripbomb","freezeThrower" };
 

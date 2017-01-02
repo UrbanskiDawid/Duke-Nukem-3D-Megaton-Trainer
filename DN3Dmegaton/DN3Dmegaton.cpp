@@ -127,6 +127,7 @@ void updateKeyboard(
 		case DN3D::ITEMID_medKit:   currentItemkey  = CLK_M; break;
 		case DN3D::ITEMID_holoduke: currentItemkey  = CLK_H; break;
 		case DN3D::ITEMID_nightVision:currentItemkey= CLK_N; break;
+		case DN3D::ITEMID_scuba:    break;
 	}
 	
 	setKeyColor(CLK_S, (currentItem==DN3D::ITEMID_steroids  && BLINK ? COLOR_WHITE : COLOR_BLACK));
@@ -275,6 +276,7 @@ int main()
 			case DN3D::ITEMID_medKit:  itemName = "medpack"; break;
 			case DN3D::ITEMID_holoduke: itemName = "holoduke"; break;
 			case DN3D::ITEMID_nightVision:itemName = "nightVision"; break;
+			case DN3D::ITEMID_scuba:itemName = "scuba"; break;
 			default:   itemName = "?";  break;
 		}
 		std::cout << "Curent item:  "<<itemName<< "("<<std::dec<<currentItem <<")"<< endl;
