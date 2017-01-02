@@ -260,24 +260,42 @@ bool init() {
 /*
  * update corsair keyboard color leds
  */
-void updateKeyboard(int health,int armor) {
+void updateKeyboard(
+	int health,
+	int armor,
+	const DN3D::sWeaponsEnabled & weaponsEnabled,
+	const DN3D::sWeaponsAmmo & weaponsAmmo)
+{
 
 	if (!CorsainKeyBoardConnected) return;
 
-	static CorsairLedColor ledColor = CorsairLedColor{ CLK_Space, 0, 0, 0 };
-	
-	CorsairKeyboard::setColor(ledColor, health);
+	using namespace CorsairKeyboard;
+
+	static CorsairLedColor ledColor = CorsairLedColor{ CLK_Space, 0, 0, 0 };	
+
+	setColor(ledColor, health);
 	for (const auto ledId : CorsairKeyboard::numPadL) {
 		ledColor.ledId = ledId;
 		CorsairSetLedsColors(1, &ledColor);
 	}
 
 
-	CorsairKeyboard::setColor(ledColor, armor);
+	setColor(ledColor, armor);
 	for (const auto ledId : CorsairKeyboard::numPadR) {
 		ledColor.ledId = ledId;
 		CorsairSetLedsColors(1, &ledColor);
 	}
+
+	
+	setKeyColor(CLK_2, (weaponsEnabled.pistol ? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_3, (weaponsEnabled.shotgun? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_4, (weaponsEnabled.ripper ? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_5, (weaponsEnabled.RPG ? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_6, (weaponsEnabled.pipebomb ? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_7, (weaponsEnabled.shrinker ? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_8, (weaponsEnabled.devastator ? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_9, (weaponsEnabled.laserTripbomb ? COLOR_WHITE : COLOR_BLACK));
+	setKeyColor(CLK_0, (weaponsEnabled.freezeThrower ? COLOR_WHITE : COLOR_BLACK));
 }
 
 int main()
@@ -295,14 +313,13 @@ int main()
 	//====================================================
 	const UINT_PTR healthAddr = hBase + DN3D::HEALTH_Offset;
 	const UINT_PTR armorAddr = hBase + DN3D::ARMOR_Offset;
-	const UINT_PTR currentWeapon_id_Addr = hBase + DN3D::CURRENTWEAPONID_Offset; //duke3d.exe + 15CBE18 [2bytes]
+	const UINT_PTR currentWeapon_id_Addr = hBase + DN3D::CURRENTWEAPONID_Offset;
 	const UINT_PTR currentWeapon_ammo_Addr = hBase + DN3D::CURRENTWEAPONAMMO_Offset;
 	const UINT_PTR cardsAddr = hBase + DN3D::CARDS_offset;
-	const UINT_PTR weaponAmmoAddr = hBase + DN3D::WEAPON_ammoOffset;//duke3d.exe + 0x15CBDFC
-	const UINT_PTR weaponEnableAddr =  hBase + DN3D::WEAPON_enableOffset;//duke3d.exe + 0x15CBEDE
+	const UINT_PTR weaponAmmoAddr = hBase + DN3D::WEAPON_ammoOffset;
+	const UINT_PTR weaponEnableAddr =  hBase + DN3D::WEAPON_enableOffset;
 	const UINT_PTR playerPosAddr = hBase + DN3D::PLAYERPOS_offset;
 	const UINT_PTR timeAddr = hBase + DN3D::STATS_TIME;
-
 	const UINT_PTR cameraYrotAddr = hBase + DN3D::CAMERAYrot_Offset;
 	const UINT_PTR cameraXrotAddr = hBase + DN3D::CAMERAXrot_Offset;
 	//====================================================
@@ -464,7 +481,7 @@ int main()
 		if (GetKeyState(VK_NUMPAD8) & 0x8000) { start += 50; idx += sizeof(enemie)*50; }
 		if (GetKeyState(VK_NUMPAD2) & 0x8000) { start -= 50; idx -= sizeof(enemie)*50; }
 
-		updateKeyboard(health,armor);
+		updateKeyboard(health,armor,weaponsEnabled,weaponsAmmo);
 
 		Sleep(250);
 	}

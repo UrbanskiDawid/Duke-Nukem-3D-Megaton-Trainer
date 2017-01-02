@@ -9,7 +9,14 @@ namespace CorsairKeyboard {
 
 	const char* toString(CorsairError error);
 
+	typedef int COLOR[3];
+
+	const COLOR COLOR_BLACK = { 0,0,0 };
+	const COLOR COLOR_WHITE = { 255,255,255 };
+
 	void setColor(CorsairLedColor &ledColor, int val, int red = 25, int yelow = 50);
+	void setKeyColor(CorsairLedId, const COLOR &color);
+	
 
 	CorsairError init();
 	void close();

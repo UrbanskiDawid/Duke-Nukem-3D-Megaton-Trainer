@@ -45,7 +45,12 @@ namespace CorsairKeyboard {
 		ledColor.b = 0;
 	}
 
-
+	void setKeyColor(CorsairLedId ledID, const COLOR &color)
+	{
+		static CorsairLedColor ledColor;
+		ledColor = CorsairLedColor{ ledID, color[0], color[1], color[2] };
+		CorsairSetLedsColors(1, &ledColor);
+	}
 
 	CorsairError init()
 	{
