@@ -14,25 +14,14 @@ namespace memory {
 	HANDLE hProcess = 0;
 	SIZE_T stBytes = 0;
 
-	void read(const UINT_PTR &addr, int32_t &ret) {
-		ReadProcessMemory(hProcess, (LPVOID)addr, &ret, sizeof(int32_t), &stBytes);
-	}
+	void read1Byte(const UINT_PTR &addr, byte &ret) {	ReadProcessMemory(hProcess, (LPVOID)addr, &ret, 1, &stBytes); 	}
 
-	void read1Byte(const UINT_PTR &addr, byte &ret) {
-		ReadProcessMemory(hProcess, (LPVOID)addr, &ret, 1, &stBytes); 
-	}
+	void read2Byte(const UINT_PTR &addr, uint16_t &ret) {	ReadProcessMemory(hProcess, (LPVOID)addr, &ret, 2, &stBytes);	}
+	void read2Byte(const UINT_PTR &addr,  int16_t &ret)	{	ReadProcessMemory(hProcess, (LPVOID)addr, &ret, 2, &stBytes);	}
 
-	void read2Byte(const UINT_PTR &addr, uint16_t &ret) {
-		ReadProcessMemory(hProcess, (LPVOID)addr, &ret, 2, &stBytes);
-	}
+	void read(const UINT_PTR &addr, int32_t &ret) { ReadProcessMemory(hProcess, (LPVOID)addr, &ret, sizeof(int32_t), &stBytes); }
 
-	void read2Byte(const UINT_PTR &addr, int &ret) {
-		ReadProcessMemory(hProcess, (LPVOID)addr, &ret, 2, &stBytes);
-	}
-
-	void writeByte(const UINT_PTR &addr, byte ret) {
-		WriteProcessMemory(hProcess, (LPVOID)addr, &ret, 1, &stBytes);
-	}
+	void writeByte(const UINT_PTR &addr, byte ret) {	WriteProcessMemory(hProcess, (LPVOID)addr, &ret, 1, &stBytes);	}
 
 	void writeBit0(const UINT_PTR &addr, bool onOff) {
 		byte ret;
