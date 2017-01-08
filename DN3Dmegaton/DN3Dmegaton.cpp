@@ -287,30 +287,32 @@ bool isEnemy(const DN3D::sSprite &sprite) {
 
 void drawRadarTask() {
 
+	//sizes
 	RECT rect; GetClientRect(hWindow, &rect);
+	const int rL = rect.left;
+	const int rT = rect.top;
+	const int rR = rect.right;
+	const int rB = rect.bottom;
+	const int centerX = rL + (rR - rL) / 2;
+	const int centerY = rT + (rB - rT) / 2;
+	//--
 
-	HDC wdc = ::GetDC(0);//HDC wdc = GetWindowDC(hWindow);
+	//draw context
+	const HDC wdc = ::GetDC(0);//destkop
+	SetTextColor(wdc, COLOR_BLACK);
+	//--
 
-						 //draw to bitmap
-	HDC memDC = CreateCompatibleDC(wdc);
-	SetBkMode(wdc, TRANSPARENT);
-	HBITMAP memBM = CreateCompatibleBitmap(wdc, 600, 600);
+	//draw memory/bitmap context
+	const HDC memDC = CreateCompatibleDC(wdc);
+	const HBITMAP memBM = CreateCompatibleBitmap(wdc, 
+		rect.right -rect.left, //width
+		rect.bottom-rect.top   //height
+	);
 	BITMAP  bitmap;
 	SelectObject(memDC, memBM);
 	//--
-	SetTextColor(wdc, 0x00000000);
-
-	const int height = (GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CYCAPTION) + GetSystemMetrics(SM_CXPADDEDBORDER));
-	const int rL = rect.left + 5;
-	const int rT = rect.top + height;
-	const int rR = rect.right;
-	const int rB = rect.bottom + height - 10;
-
-	const int centerX = rL + (rR - rL) / 2;
-	const int centerY = rT + (rB - rT) / 2;
-
+	
 	CHAR text[44];
-
 	while(canRun){
 
 		Sleep(10);
