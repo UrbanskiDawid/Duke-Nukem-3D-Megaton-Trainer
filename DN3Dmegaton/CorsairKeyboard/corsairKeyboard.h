@@ -2,8 +2,8 @@
 
 //Linker/Input/AdditionalDirectories CUESDK.x64_2013.lib
 //Linker/Input/General/AdditionalLibraryDirectories
-#include "..\CUESDK\include\CorsairLedIdEnum.h"
-#include "..\CUESDK\include\CUESDK.h"
+#include "CUESDK\include\CorsairLedIdEnum.h"
+#include "CUESDK\include\CUESDK.h"
 
 namespace CorsairKeyboard {
 

@@ -24,12 +24,6 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CUESDK\include\CUESDK.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CUESDK\include\CUESDKGlobal.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="consts.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -39,11 +33,17 @@
     <ClInclude Include="CorsairKeyboard\corsairKeyboard.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CUESDK\include\CorsairLedIdEnum.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="DN3D.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CorsairKeyboard\CUESDK\include\CorsairLedIdEnum.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CorsairKeyboard\CUESDK\include\CUESDK.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CorsairKeyboard\CUESDK\include\CUESDKGlobal.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
