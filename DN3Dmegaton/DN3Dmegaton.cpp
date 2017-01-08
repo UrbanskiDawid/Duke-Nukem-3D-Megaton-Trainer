@@ -138,33 +138,26 @@ bool init() {
 	hWindow = FindWindowA(0, WND_TITLE);
 	GetWindowThreadProcessId(hWindow, &processId);
 	if (processId == -1)
-	{
 		return false;
-	}
-	else {
-		std::cout << OK << endl;
-	}
+	std::cout << OK <<" (PID: 0x" << std::hex << processId <<")"<<	endl;
 
 	//open proces
 	//====================================================
-	std::cout << "opening process PID:" << processId << " ... ";
+	std::cout << "opening process [PID: 0x" << std::hex<< processId << "] ... ";
 	memory::hProcess = OpenProcess(PROCESS_ALL_ACCESS, false, processId);
-	if (memory::hProcess == 0) {
+	if (memory::hProcess == 0)
 		return false;
-	}
-	std::cout << OK << endl;
+	std::cout << OK << " (adress 0x"<< std::hex << (UINT_PTR)memory::hProcess <<")"<< endl;
 
 	//base adress [GetModuleHandleA("duke3d.exe"); ??] [probably 0x00E90000?]
 	//====================================================
-	std::cout << "getting base address:" << processId << " ... ";
+	std::cout << "getting module base address: ... ";
 	HMODULE hModule;
 	DWORD cbNeeded;
-	if (!EnumProcessModulesEx(memory::hProcess, &hModule, sizeof(hModule), &cbNeeded, LIST_MODULES_32BIT | LIST_MODULES_64BIT))
-	{
+	if (!EnumProcessModulesEx(memory::hProcess, &hModule, sizeof(hModule), &cbNeeded, LIST_MODULES_32BIT))
 		return false;
-	}
 	hBase = (UINT_PTR)hModule;
-	std::cout << OK << " [The base is 0x" << hBase << "]" << endl; //Print the pointer
+	std::cout << OK <<" (adress 0x" << std::hex << hBase << ")" << endl; //Print the pointer
 
     //Corsair CUE (optional)
 	//====================================================
@@ -173,10 +166,8 @@ bool init() {
 	if (error) {
 		std::cout << "Handshake failed " << CorsairKeyboard::toString(error) << std::endl;
 	}
-	else {
-		CorsainKeyBoardConnected = true;
-		std::cout << OK << endl;
-	}
+	CorsainKeyBoardConnected = true;
+	std::cout << OK << endl;
 
 	return true;	//done
 }

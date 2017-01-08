@@ -177,4 +177,20 @@ namespace DN3D {
 	};
 	const UINT CURRENTWEAPONAMMO_Offset = 0x15F1BCA;//duke3d.exe + 0x15F1BCA size 1byte
 
+
+    //source: https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Engine/src/build.h#L94
+	struct sWallType
+	{
+		int32_t x, y;
+		short point2, nextwall, nextsector, cstat;
+		short picnum, overpicnum;
+		int8_t shade;
+		uint8_t  pal, xrepeat, yrepeat, xpanning, ypanning;
+		short lotag, hitag, extra;
+		/* 32 bytes */
+	};
+	//0x00180000 - base
+	//0x01A518e0 - wall
+	const UINT WALL_offset = 0x0; 
+	const UINT MAXWALLS = 8192;	  
 }
