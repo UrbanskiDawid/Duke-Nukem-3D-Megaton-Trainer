@@ -1,40 +1,22 @@
-========================================================================
-    CONSOLE APPLICATION : DN3Dmegaton Project Overview
-========================================================================
+##    DN3Dmegaton trainer
 
-AppWizard has created this DN3Dmegaton application for you.
+This a trainer that alows you read & write memory of 
+**Duke Nukem 3D Atomic Edition 1.4.9 STABLE**
 
-This file contains a summary of what you will find in each of the files that
-make up your DN3Dmegaton application.
+futures
+1. regenerate health
+2. regenerate shield
+3. draw map with enemies!
+4. keep ammunition
+5. supports **corsair k70 rgb** keyboard to visualise data
 
+note:
+please play in window mode, and move the console window away from left top 
 
-DN3Dmegaton.vcxproj
-    This is the main project file for VC++ projects generated using an Application Wizard.
-    It contains information about the version of Visual C++ that generated the file, and
-    information about the platforms, configurations, and project features selected with the
-    Application Wizard.
-
-DN3Dmegaton.vcxproj.filters
-    This is the filters file for VC++ projects generated using an Application Wizard. 
-    It contains information about the association between the files in your project 
-    and the filters. This association is used in the IDE to show grouping of files with
-    similar extensions under a specific node (for e.g. ".cpp" files are associated with the
-    "Source Files" filter).
-
+/////////////////////////////////////////////////////////////////////////////
 DN3Dmegaton.cpp
     This is the main application source file.
-
-/////////////////////////////////////////////////////////////////////////////
-Other standard files:
-
-StdAfx.h, StdAfx.cpp
-    These files are used to build a precompiled header (PCH) file
-    named DN3Dmegaton.pch and a precompiled types file named StdAfx.obj.
-
-/////////////////////////////////////////////////////////////////////////////
-Other notes:
-
-AppWizard uses "TODO:" comments to indicate parts of the source code you
-should add to or customize.
-
+    
+DN3D.h
+    Contains all memory offsets.
 /////////////////////////////////////////////////////////////////////////////
