@@ -13,15 +13,11 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 #include <string>
 #include <Psapi.h>
 #include <iomanip> // std::setw
-#include <string>
 #include <thread>
 #include "consts.h"
 #include "MemoryHelpers\memoryHelpers.h"
 #include "CorsairKeyboard\corsairKeyboard.h"
 #include "DN3D.h"
-#include <Psapi.h>
-#include <iostream>
-#include <windows.h>
 
 using namespace std;
 
@@ -87,44 +83,44 @@ void memoryReaderTask()
 
 		//timer
 		//---------------------------------------
-		//memory::read(timerAddr, timer);
-		ReadProcessMemory(memory::hProcess, (LPVOID)timerAddr, &timer, sizeof(int32_t), &stBytes);
+		memory::read(timerAddr, timer);
+
 
 		//pos
 		//---------------------------------------
-		ReadProcessMemory(memory::hProcess, (LPVOID)playerPosAddr, &playerPos, sizeof(playerPos), &stBytes);
-		memory::read2Byte(cameraXrotAddr, cameraXrot);
-		memory::read2Byte(cameraYrotAddr, cameraYrot);
+		memory::read(playerPosAddr,  playerPos);
+		memory::read(cameraXrotAddr, cameraXrot);
+		memory::read(cameraYrotAddr, cameraYrot);
 
 		//HEALTH
 		//---------------------------------------
-		memory::read1Byte(healthAddr, health);
+		memory::read(healthAddr, health);
 
 		//ARMOR
 		//---------------------------------------
-		memory::read1Byte(armorAddr, armor);
+		memory::read(armorAddr, armor);
 
 		//currentWeapon
 		//---------------------------------------
-		memory::read1Byte(currentWeapon_id_Addr, currentWeaponId);
-		memory::read1Byte(currentWeapon_ammo_Addr, currentWeaponAmmo);
-
+		memory::read(currentWeapon_id_Addr, currentWeaponId);
+		memory::read(currentWeapon_ammo_Addr, currentWeaponAmmo);
+		
 		//currentItem
 		//---------------------------------------
-		memory::read2Byte(currentItemAddr, currentItem);
+		memory::read(currentItemAddr, currentItem);
 
 		//CARDS
 		//---------------------------------------
-		memory::read1Byte(cardsAddr, cards);
+		memory::read(cardsAddr, cards);
 
 		//WEAPONS
 		//---------------------------------------
-		ReadProcessMemory(memory::hProcess, (LPVOID)weaponAmmoAddr, &weaponsAmmo, sizeof(weaponsAmmo), &stBytes);
-		ReadProcessMemory(memory::hProcess, (LPVOID)weaponEnableAddr, &weaponsEnabled, sizeof(weaponsEnabled), &stBytes);
+		memory::read(weaponAmmoAddr, weaponsAmmo);
+		memory::read(weaponEnableAddr, weaponsEnabled);
 
 		//list of Enemies/sprites
 		//----------------------------------------------------------------
-		ReadProcessMemory(memory::hProcess, (LPVOID)duke3d_ps, sprite, sizeof(DN3D::sSprite)*MAXSPRITES, &stBytes);
+		memory::read(duke3d_ps, sprite);
 		
 		Sleep(100);
 
@@ -170,8 +166,8 @@ bool init() {
 	hBase = (UINT_PTR)hModule;
 	std::cout << OK << " [The base is 0x" << hBase << "]" << endl; //Print the pointer
 
-																   //Corsair CUE (optional)
-																   //====================================================
+    //Corsair CUE (optional)
+	//====================================================
 	std::cout << "connecting to Corsair CUE ... ";
 	const auto error = CorsairKeyboard::init();
 	if (error) {
@@ -278,7 +274,7 @@ bool isEnemy(const DN3D::sSprite &sprite) {
 		case DN3D::ePICID::SPRITE_PICID_ENEMIE_HUGEMONSTER:
 		case DN3D::ePICID::SPRITE_PICID_ENEMIE_FASTMONSTER:
 		case DN3D::ePICID::SPRITE_PICID_ENEMIE_INVALIDMONSTER:
-		case DN3D::ePICID::SPRITE_PICID_TANK:
+		case DN3D::ePICID::SPRITE_PICID_ENEMIE_TANK:
 			return true;
 	}
 
@@ -372,16 +368,16 @@ void trainer()
 		Sleep(10);
 
 		//1.keep min health
-		if (health < 50) { memory::writeByte(healthAddr, health + 5); }
+		if (health < 50) { memory::write(healthAddr, health + 5); }
 
 		//2.keep min armor
-		if (armor < 50) { memory::writeByte(armorAddr, armor + 5); }
+		if (armor < 50) { memory::write(armorAddr, armor + 5); }
 
 		//3.keep current weapon ammo
 		short *sAmmo = reinterpret_cast<short*>(&weaponsAmmo);
 		if (sAmmo[currentWeaponId] < 20) {
 			sAmmo[currentWeaponId] = 20;
-			WriteProcessMemory(memory::hProcess, (LPVOID)weaponAmmoAddr, &weaponsAmmo, sizeof(weaponsAmmo), &stBytes);
+			memory::write(weaponAmmoAddr, weaponsAmmo);
 		}
 	}
 }

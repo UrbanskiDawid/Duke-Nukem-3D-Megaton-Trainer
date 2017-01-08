@@ -1,22 +1,20 @@
 #pragma once
-
 #include <windows.h>
 
-SIZE_T stBytes = 0;
-
 namespace memory {
+	extern SIZE_T stBytes;
+
 	extern HANDLE hProcess;//handle to game process
 
-	//8bit
-	void read1Byte(const UINT_PTR &addr, byte &ret);
+	template <typename T>
+	inline void read(const UINT_PTR &addr,        T &ret) {
+		ReadProcessMemory(hProcess, (LPVOID)addr, &ret, sizeof(T), &stBytes);
+	}
 
-	//16bit
-	void read2Byte(const UINT_PTR &addr, int16_t &ret);
-	void read2Byte(const UINT_PTR &addr, uint16_t &ret);
+	template <typename T>
+	inline void write(const UINT_PTR &addr, const T &ret) {
+		WriteProcessMemory(hProcess, (LPVOID)addr, &ret, sizeof(T), &stBytes);
+	}
 
-	//32bit
-	void read(const UINT_PTR &addr, int32_t &ret);
-
-	void writeByte(const UINT_PTR &addr, byte ret);
 	void writeBit0(const UINT_PTR &addr, bool onOff);
 }
