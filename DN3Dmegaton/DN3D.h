@@ -120,7 +120,6 @@ namespace DN3D {
 		int16_t  health;  //2B  //-32768 - 0 -32767 (if <0 can't kill)
 						  //sizeof 44B
 	};
-
 	const UINT POSA_offset         = 0x15CBDEC;//duke3d.exe + 15CBDEC size 2bytes (rotation)
 	const UINT POS_ZY              = 0x15CBDB4;//duke3d.exe + 15CBDB4 size 2bytes
 	const UINT STATS_TIME          = 0x15CBDC4;//duke3d.exe + 15CBDC4 size 4bytes (starts at 0 and goes up) [value 26= 1sec]
@@ -176,7 +175,8 @@ namespace DN3D {
 		byte freezeThrower; //0x15CBEE7
 	};
 	const UINT CURRENTWEAPONAMMO_Offset = 0x15F1BCA;//duke3d.exe + 0x15F1BCA size 1byte
-
+	const UINT wall_Offset              = 0x18D18E0;//duke3d.wall array of <sWallType> MAXWALLS elements.
+	const UINT ps_Offset                = 0x19D4B60;//duke3d.ps array of <sSprite> MAXSPRITES elements. size sizeof(sSprite)*MAXSPRITES, 44*4096
 
     //source: https://github.com/fabiensanglard/chocolate_duke3D/blob/ef372086621d1a55be6dead76ae70896074ac568/Engine/src/build.h#L94
 	struct sWallType
@@ -189,8 +189,7 @@ namespace DN3D {
 		short lotag, hitag, extra;
 		/* 32 bytes */
 	};
-	//0x00180000 - base
-	//0x01A518e0 - wall
-	const UINT WALL_offset = 0x0; 
-	const UINT MAXWALLS = 8192;	  
+
+	const UINT MAXWALLS    = 8192;
+	const UINT MAXSPRITES  = 4096;
 }

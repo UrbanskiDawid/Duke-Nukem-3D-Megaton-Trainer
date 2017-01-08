@@ -65,9 +65,11 @@ uint16_t cameraXrot;
 UINT_PTR currentItemAddr;
 uint16_t currentItem;
 
-const UINT MAXSPRITES = 4096;
-UINT_PTR duke3d_ps;
-DN3D::sSprite sprite[MAXSPRITES];
+UINT_PTR duke3d_psAddr;
+DN3D::sSprite sprite[DN3D::MAXSPRITES];
+
+UINT_PTR duke3d_wallAddr;
+DN3D::sWallType walls[DN3D::MAXWALLS];
 //====================================================
 
 
@@ -120,7 +122,11 @@ void memoryReaderTask()
 
 		//list of Enemies/sprites
 		//----------------------------------------------------------------
-		memory::read(duke3d_ps, sprite);
+		memory::read(duke3d_psAddr, sprite);
+
+		//list of walls
+		//-----------------------------------------------------------------
+		memory::read(duke3d_wallAddr, walls);//TODO: don't refresh each time!
 		
 		Sleep(100);
 
@@ -242,7 +248,7 @@ const COLORREF COLOR_BLACK  = RGB( 0, 0, 0);
 const COLORREF COLOR_SPRITE = RGB( 25, 0, 25);
 const COLORREF COLOR_ENEMIE = RGB(255, 0, 25);
 
-
+//todo 
 void mark(HDC wdc,int x, int y,const COLORREF & color) {
 	SetPixel(wdc, x + 1, y, color);
 	SetPixel(wdc, x, y + 1, color);
@@ -272,6 +278,22 @@ bool isEnemy(const DN3D::sSprite &sprite) {
 	return false;
 }
 
+struct POINT32 { int32_t x; int32_t y; };
+
+static const float scale = 0.05f;
+
+POINT32 game2radar(const int32_t &X, const int32_t &Y, const float &c, const float &s) {
+	POINT32 p;
+	p.x = (X - playerPos.Xpos)* scale;
+	p.y = (Y - playerPos.Ypos)* scale;
+
+	double xnew = p.x * c - p.y * s;
+	double ynew = p.x * s + p.y * c;
+	p.x = xnew;
+	p.y = ynew;
+
+	return p;
+}
 void drawRadarTask() {
 
 	//sizes
@@ -317,34 +339,52 @@ void drawRadarTask() {
 
 		Rectangle(memDC, rL, rT, rR, rB);
 		mark(memDC, centerX, centerY, COLOR_BLACK);
-		static const float scale = 0.05f;
+
 		for (int j = 0;
-			j < MAXSPRITES;
+			j < DN3D::MAXSPRITES;
 			j++) {
 
 			if (sprite[j].cstat & 0b1000000000000000 == 0) continue; //visible
 
-			INT x = (sprite[j].posX - playerPos.Xpos)* scale;
-			INT y = (sprite[j].posY - playerPos.Ypos)* scale;
-
-			//rotate by player angle		
-			double xnew = x * c - y * s;
-			double ynew = x * s + y * c;
-			x = xnew;
-			y = ynew;
-			//--
-
-			x += centerX;
-			y += centerY;
-
-			if (isEnemy(sprite[j]))  mark(memDC, x, y, COLOR_ENEMIE);
+			POINT32 p = game2radar(sprite[j].posX, sprite[j].posY,c,s);
+			p.x += centerX;
+			p.y += centerY;
+			
+			if (isEnemy(sprite[j]))  mark(memDC, p.x, p.y, COLOR_ENEMIE);
 			else {
-				mark(memDC, x, y, COLOR_SPRITE);
+			mark(memDC, p.x, p.y, COLOR_SPRITE);
 
-				_itoa_s(sprite[j].picnum, text, 10);
-				TextOutA(memDC, x, y, text, strlen(text));
+			_itoa_s(sprite[j].picnum, text, 10);
+			TextOutA(memDC, p.x, p.y, text, strlen(text));
 			}
-		}
+
+		}//for sprites
+
+		POINT32 p1,p2;
+		POINT arr[2];
+		for (int j = 0;
+			 j<DN3D::MAXWALLS;
+			 j++){
+
+			const DN3D::sWallType &wall1 = walls[j];
+
+			if (wall1.point2 == 0 || wall1.point2==j) continue;
+
+			const DN3D::sWallType &wall2 = walls[wall1.point2];
+
+			p1 = game2radar(wall1.x, wall1.y, c, s);
+			p1.x += centerX;
+			p1.y += centerY;
+
+			p2 = game2radar(wall2.x, wall2.y, c, s);
+			p2.x += centerX;
+			p2.y += centerY;
+
+			arr[0] = { p1.x,p1.y };
+			arr[1] = { p1.x,p1.y };
+			Polyline(memDC,arr,2);
+
+		}//for walls
 
 		GetObject(memBM, sizeof(bitmap), &bitmap);
 		BitBlt(wdc, 0, 0, bitmap.bmWidth, bitmap.bmHeight, memDC, 0, 0, SRCCOPY);
@@ -401,7 +441,8 @@ int main()
 	cameraYrotAddr = hBase + DN3D::CAMERAYrot_Offset;
 	cameraXrotAddr = hBase + DN3D::CAMERAXrot_Offset;
 	currentItemAddr = hBase + DN3D::CURRENT_ITEM;
-	duke3d_ps = hBase + 0x19D4B60;
+	duke3d_wallAddr = hBase + DN3D::wall_Offset;
+	duke3d_psAddr = hBase + DN3D::ps_Offset;	
 	//====================================================
 
 	//threads
