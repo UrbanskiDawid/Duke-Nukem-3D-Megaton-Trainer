@@ -7,6 +7,7 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 
 #include "stdafx.h"
 #include <windows.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <bitset>
 #include <iostream>
@@ -14,17 +15,17 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 #include <Psapi.h>
 #include <iomanip> // std::setw
 #include <thread>
+#include <atomic>  // std::atomic
 #include "consts.h"
 #include "MemoryHelpers\memoryHelpers.h"
 #include "CorsairKeyboard\corsairKeyboard.h"
 #include "DN3D.h"
-
 using namespace std;
 
 HWND hWindow;
 UINT_PTR hBase;//base addres of game module
 
-volatile bool canRun = true; //if false program ends
+std::atomic<bool> canRun(true);//if false program ends
 bool CorsainKeyBoardConnected = false;//is connected to Corsair CUE SDK
 
 //current adresses + values
@@ -36,10 +37,10 @@ UINT_PTR armorAddr;
 byte armor;
 
 UINT_PTR currentWeapon_id_Addr;
-byte currentWeaponId;
+uint8_t currentWeaponId;
 
 UINT_PTR currentWeapon_ammo_Addr;
-byte currentWeaponAmmo;
+uint8_t currentWeaponAmmo;
 
 UINT_PTR cardsAddr;
 byte cards;
@@ -78,9 +79,6 @@ DN3D::sWallType walls[DN3D::MAXWALLS];
 */
 void memoryReaderTask()
 {
-	UINT_PTR addr;
-	long j;
-
 	while (canRun) {
 
 		//timer
@@ -128,7 +126,7 @@ void memoryReaderTask()
 		//-----------------------------------------------------------------
 		memory::read(duke3d_wallAddr, walls);//TODO: don't refresh each time!
 
-		Sleep(100);
+		Sleep(50);
 
 	}//while(true)
 }
@@ -139,7 +137,7 @@ bool init() {
 	//====================================================
 	DWORD processId = -1;
 	std::cout << "looking for '" << WND_TITLE << "' window... ";
-	hWindow = FindWindowA(0, WND_TITLE);
+	hWindow = FindWindow(0, WND_TITLE);
 	GetWindowThreadProcessId(hWindow, &processId);
 	if (processId == -1)
 		return false;
@@ -242,16 +240,100 @@ void updateKeyboardTask()
 */
 namespace RADAR {
 
+	HWND window = 0;
+
 	const float SCALE = 0.05f;
 
 	const COLORREF COLOR_BLACK = RGB(0, 0, 0);
 	const COLORREF COLOR_SPRITE = RGB(25, 0, 25);
 	const COLORREF COLOR_ENEMIE = RGB(255, 0, 25);
 
+	//sizes
 	int centerX = 0;
 	int centerY = 0;
+	int rL, rT, rR, rB;
+	//--
 
+	HDC hdc = ::GetDC(0);//destkop
+	HDC memDC = 0;
+	HBITMAP hBitmap;//draw buffer
 	struct POINT32 { int32_t x; int32_t y; };
+
+	void resize()
+	{
+		RECT rect; GetClientRect(window, &rect);
+
+		rL = rect.left;
+		rT = rect.top;
+		rR = rect.right;
+		rB = rect.bottom;
+
+		centerX = rL + (rR - rL) / 2;
+		centerY = rT + (rB - rT) / 2;
+
+		hBitmap = CreateCompatibleBitmap(hdc,
+			rect.right - rect.left, //width
+			rect.bottom - rect.top  //height
+		);
+
+		SelectObject(memDC, hBitmap);
+	}
+
+	LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+	{
+		switch (msg)
+		{
+		case WM_WINDOWPOSCHANGED:
+			resize();
+			break;
+
+		case WM_DESTROY:		
+			PostQuitMessage(0);
+			return 0;
+		}
+
+		return DefWindowProc(hwnd, msg, wParam, lParam);
+	}
+
+	
+	
+	void runWindowTask()
+	{
+		const WCHAR* myclass = L"myclass";
+
+		const WNDCLASSEX wndclass = {
+			sizeof(WNDCLASSEX),
+			CS_DBLCLKS,
+			WndProc,
+			0, 0,
+			GetModuleHandle(0),
+			LoadIcon(0,IDI_APPLICATION),
+			LoadCursor(0,IDC_ARROW),
+			HBRUSH(COLOR_WINDOW + 1),
+			0,
+			myclass, LoadIcon(0,IDI_APPLICATION)
+		};
+
+		if (RegisterClassEx(&wndclass))
+		{
+			window = CreateWindowEx(//NOTE: must be it the same thread as GetMessage/DispatchMessage
+				0, myclass,
+				WND_TITLE,
+				WS_OVERLAPPEDWINDOW,
+				CW_USEDEFAULT, CW_USEDEFAULT,
+				CW_USEDEFAULT, CW_USEDEFAULT, 0, 0,
+				GetModuleHandle(0), 0);
+
+			if (window)
+			{
+				ShowWindow(window, SW_SHOWDEFAULT);
+				MSG msg;
+				while (GetMessage(&msg, 0, 0, 0)) DispatchMessage(&msg);
+
+				canRun = false;
+			}
+		}
+	}
 
 	void mark(HDC wdc, int x, int y, const COLORREF & color) {
 		SetPixel(wdc, x + 1, y, color);
@@ -300,49 +382,54 @@ namespace RADAR {
 
 	void drawRadarTask() {
 
-		//sizes
-		RECT rect; GetClientRect(hWindow, &rect);
-		const int rL = rect.left;
-		const int rT = rect.top;
-		const int rR = rect.right;
-		const int rB = rect.bottom;
-		centerX = rL + (rR - rL) / 2;
-		centerY = rT + (rB - rT) / 2;
-		//--
+		//createwindow
+		std::thread t(RADAR::runWindowTask);
+
+		//wait for window to be created (note: CreateWindow must be in subthread)
+		{
+			int j = 10;
+			while (window == 0) {
+				Sleep(500);
+				if (--j == 0) return;
+			}
+		}//----
 
 		//draw context
-		const HDC hdc = ::GetDC(0);//destkop
+		hdc = ::GetDC(window);
 		SetTextColor(hdc, COLOR_BLACK);
 		//--
-		
+
 		//draw memory/bitmap context
-		const HDC memDC = CreateCompatibleDC(hdc);
-		HBITMAP hBitmap = CreateCompatibleBitmap(hdc,
-			rect.right - rect.left, //width
-			rect.bottom - rect.top  //height
-		);
-		BITMAP bitmap;
-		SelectObject(memDC, hBitmap);
+		memDC = CreateCompatibleDC(hdc);
+		resize();
+		
 		//--
 
-		HBRUSH brushRED   = CreateSolidBrush(RGB(250, 0, 0));
-		HBRUSH brushWHITE = CreateSolidBrush(GetBkColor(memDC));
+		const HBRUSH brushRED = CreateSolidBrush(RGB(250, 0, 0));
+		const HBRUSH brushWHITE = CreateSolidBrush(GetBkColor(memDC));
 
+		//canRun variables
+		BITMAP bitmap;
 		CHAR text[44];
+		POINT32 p1, p2;
+		POINT arr[2];
+		float rotDegree, rotRad,s,c;
+		//--
+	
 		while (canRun) {
 
 			Sleep(10);
 
-			float rotDegree = cameraXrot * 360 / 2046;
+			rotDegree = cameraXrot * 360.0f / 2046.0f;
 
 			//fix to window cordinates
 			rotDegree += 90;
 			rotDegree = -rotDegree;
 			//--
 
-			float rotRad = rotDegree*3.1415 / 180;
-			float s = sin(rotRad);
-			float c = cos(rotRad);
+			rotRad = rotDegree*3.1415 / 180.0f;
+			s = sin(rotRad);
+			c = cos(rotRad);
 
 			Rectangle(memDC, rL, rT, rR, rB);
 			mark(memDC, centerX, centerY, COLOR_BLACK);
@@ -351,7 +438,7 @@ namespace RADAR {
 				j < DN3D::MAXSPRITES;
 				j++) {
 
-				if (sprite[j].cstat & 0b1000000000000000 == 0) continue; //visible
+				if ((sprite[j].cstat & 0b1000000000000000) == 0) continue; //visible
 
 				POINT32 p = game2radar(sprite[j].posX, sprite[j].posY, c, s);
 
@@ -399,8 +486,6 @@ namespace RADAR {
 				}
 			}//for sprites
 
-			POINT32 p1, p2;
-			POINT arr[2];
 			for (int j = 0;
 				 j<DN3D::MAXWALLS;
 				 j++) {
@@ -424,10 +509,15 @@ namespace RADAR {
 			BitBlt(hdc, 0, 0, bitmap.bmWidth, bitmap.bmHeight, memDC, 0, 0, SRCCOPY);
 
 		}//while(canRun)
+
+		t.join();
+
 	}//drawRadarTask
+
+	
 }//RADAR
 
-void trainer()
+void trainerTask()
 {
 	while (canRun) {
 		Sleep(10);
@@ -447,52 +537,21 @@ void trainer()
 	}
 }
 
-int main()
+void consoleTask()
 {
-	//Hello
-	SetConsoleTitleA(PROGRAM_NAME);
-	std::cout << PROGRAM_NAME << endl << endl;
-	Sleep(2000);
-
-	//Init
-	if (!init()) {
-		std::cout << FAIL << endl;
-		Sleep(10000);
-		return 1;
-	}
-
-	//current adresses + values
-	//====================================================
-	healthAddr = hBase + DN3D::HEALTH_Offset;
-	armorAddr = hBase + DN3D::ARMOR_Offset;
-	currentWeapon_id_Addr = hBase + DN3D::CURRENTWEAPONID_Offset;
-	currentWeapon_ammo_Addr = hBase + DN3D::CURRENTWEAPONAMMO_Offset;
-	cardsAddr = hBase + DN3D::CARDS_offset;
-	weaponAmmoAddr = hBase + DN3D::WEAPON_ammoOffset;
-	weaponEnableAddr = hBase + DN3D::WEAPON_enableOffset;
-	playerPosAddr = hBase + DN3D::PLAYERPOS_offset;
-	timerAddr = hBase + DN3D::STATS_TIME;
-	cameraYrotAddr = hBase + DN3D::CAMERAYrot_Offset;
-	cameraXrotAddr = hBase + DN3D::CAMERAXrot_Offset;
-	currentItemAddr = hBase + DN3D::CURRENT_ITEM;
-	duke3d_wallAddr = hBase + DN3D::wall_Offset;
-	duke3d_psAddr = hBase + DN3D::ps_Offset;
-	//====================================================
-
-	//threads
-	std::thread t1(memoryReaderTask);
-	std::thread t2(RADAR::drawRadarTask);
-	std::thread t3(updateKeyboardTask);
-	std::thread t4(trainer);
-
 	//Main thread
 	DWORD exitCode;
 	SIZE_T stBytes = 0;
 	while (canRun) {
 
 		//check if process is running
-		if (!GetExitCodeProcess(memory::hProcess, &exitCode)) break;
-		if (exitCode != STILL_ACTIVE) break;
+		if ( (!GetExitCodeProcess(memory::hProcess, &exitCode))
+			 ||
+			exitCode != STILL_ACTIVE)
+		{
+			canRun = false;
+			break;
+		}
 
 		Sleep(50);
 
@@ -529,8 +588,8 @@ int main()
 		//currentWeapon
 		//---------------------------------------
 		std::cout << "Curent weapon:"
-			<< std::setw(15) << DN3D::WEAPON_NAMES[(int)currentWeaponId] << "(" << (int)currentWeaponId << ")"
-			<< "  ammo:" << std::setw(15) << (int)currentWeaponAmmo
+			<< std::setw(15) << DN3D::WEAPON_NAMES[currentWeaponId] << "(" << (int)currentWeaponId << ")"
+			<< "  ammo:" << std::setw(15) << currentWeaponAmmo
 			<< endl;
 
 		//currentItem
@@ -639,12 +698,61 @@ int main()
 		*/
 	}
 
-	canRun = false;
 	std::cout << "END";
+}
+
+
+
+
+int main()
+{
+	//Hello
+	SetConsoleTitleA(PROGRAM_NAME);
+	std::cout << PROGRAM_NAME << endl << endl;
+	Sleep(2000);
+
+	//Init
+	if (!init()) {
+		std::cout << FAIL << endl;
+		Sleep(10000);
+		return 1;
+	}
+
+	//current adresses + values
+	//====================================================
+	healthAddr = hBase + DN3D::HEALTH_Offset;
+	armorAddr = hBase + DN3D::ARMOR_Offset;
+	currentWeapon_id_Addr = hBase + DN3D::CURRENTWEAPONID_Offset;
+	currentWeapon_ammo_Addr = hBase + DN3D::CURRENTWEAPONAMMO_Offset;
+	cardsAddr = hBase + DN3D::CARDS_offset;
+	weaponAmmoAddr = hBase + DN3D::WEAPON_ammoOffset;
+	weaponEnableAddr = hBase + DN3D::WEAPON_enableOffset;
+	playerPosAddr = hBase + DN3D::PLAYERPOS_offset;
+	timerAddr = hBase + DN3D::STATS_TIME;
+	cameraYrotAddr = hBase + DN3D::CAMERAYrot_Offset;
+	cameraXrotAddr = hBase + DN3D::CAMERAXrot_Offset;
+	currentItemAddr = hBase + DN3D::CURRENT_ITEM;
+	duke3d_wallAddr = hBase + DN3D::wall_Offset;
+	duke3d_psAddr = hBase + DN3D::ps_Offset;
+	//====================================================
+
+	//threads
+	std::thread t1(memoryReaderTask);
+	std::thread t2(RADAR::drawRadarTask);
+	std::thread t3(updateKeyboardTask);
+	std::thread t4(trainerTask);
+	std::thread t5(consoleTask);
+
+	try{
 	t1.join();
 	t2.join();
 	t3.join();
 	t4.join();
+	t5.join();
+	}
+	catch (exception e) {
+
+	}
 
 	CloseHandle(memory::hProcess);
 

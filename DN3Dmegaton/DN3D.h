@@ -58,7 +58,7 @@ namespace DN3D {
 	const UINT ITEMID_medKit = 256;
 	const UINT ITEMID_scuba = 1536;
 	
-	const char* WEAPON_NAMES[] = { "mighty leg", "pistol","shotgun","ripper","RPG","pipebomb","shrinker","devastator","laserTripbomb","freezeThrower" };
+	const char* WEAPON_NAMES[] = { "mighty leg", "pistol","shotgun","ripper","RPG","pipebomb","shrinker","devastator","laserTripbomb","freezeThrower","??" };
 
 	//-------------
 	enum ePICID{
@@ -80,7 +80,9 @@ namespace DN3D {
 		SPRITE_PICID_ENEMIE_INVALIDMONSTER = 1930,
 		SPRITE_PICID_ENEMIE_TANK = 1975,
 
-		SPRITE_PICID_COLECTABLE_AMMOPISTOL = 40
+		SPRITE_PICID_COLECTABLE_AMMOPISTOL = 40,
+
+		SPRITE_PICID_AUTODESTRUCT = 142
 	};
 
 	const UINT SPRITE_PICID_LADY_BUSH = 1294;
