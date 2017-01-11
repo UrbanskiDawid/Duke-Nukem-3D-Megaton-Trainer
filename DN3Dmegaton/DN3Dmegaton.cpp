@@ -16,6 +16,7 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 #include <iomanip> // std::setw
 #include <thread>
 #include <atomic>  // std::atomic
+#include <vector>
 #include "consts.h"
 #include "MemoryHelpers\memoryHelpers.h"
 #include "CorsairKeyboard\corsairKeyboard.h"
@@ -75,8 +76,8 @@ DN3D::sWallType walls[DN3D::MAXWALLS];
 
 
 /*
-* read curent values from memory
-*/
+ * read curent values from memory
+ */
 void memoryReaderTask()
 {
 	while (canRun) {
@@ -84,7 +85,6 @@ void memoryReaderTask()
 		//timer
 		//---------------------------------------
 		memory::read(timerAddr, timer);
-
 
 		//pos
 		//---------------------------------------
@@ -131,6 +131,9 @@ void memoryReaderTask()
 	}//while(true)
 }
 
+/*
+ * start program - find window/proces/base adress/Corsair CUE
+ */
 bool init() {
 
 	//find window/process
@@ -240,13 +243,10 @@ void updateKeyboardTask()
 */
 namespace RADAR {
 
-	HWND window = 0;
+	HWND window = 0;//radaw window
 
 	const float SCALE = 0.05f;
 
-	const COLORREF COLOR_BLACK = RGB(0, 0, 0);
-	const COLORREF COLOR_SPRITE = RGB(25, 0, 25);
-	const COLORREF COLOR_ENEMIE = RGB(255, 0, 25);
 
 	//sizes
 	int centerX = 0;
@@ -254,9 +254,12 @@ namespace RADAR {
 	int rL, rT, rR, rB;
 	//--
 
-	HDC hdc = ::GetDC(0);//destkop
-	HDC memDC = 0;
-	HBITMAP hBitmap;//draw buffer
+	//drawing
+	HDC hDC = ::GetDC(0);//destkop
+	HDC hMemDC = 0;
+	HBITMAP hBitmap=0;//draw buffer
+	//--
+
 	struct POINT32 { int32_t x; int32_t y; };
 
 	void resize()
@@ -271,19 +274,22 @@ namespace RADAR {
 		centerX = rL + (rR - rL) / 2;
 		centerY = rT + (rB - rT) / 2;
 
-		hBitmap = CreateCompatibleBitmap(hdc,
+		if(hBitmap!=0)
+		DeleteObject(hBitmap);
+
+		hBitmap = CreateCompatibleBitmap(hDC,
 			rect.right - rect.left, //width
 			rect.bottom - rect.top  //height
 		);
 
-		SelectObject(memDC, hBitmap);
+		SelectObject(hMemDC, hBitmap);
 	}
 
 	LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 		switch (msg)
 		{
-		case WM_WINDOWPOSCHANGED:
+		case WM_WINDOWPOSCHANGED://change size maximize etc
 			resize();
 			break;
 
@@ -295,8 +301,6 @@ namespace RADAR {
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
 
-	
-	
 	void runWindowTask()
 	{
 		const WCHAR* myclass = L"myclass";
@@ -335,7 +339,7 @@ namespace RADAR {
 		}
 	}
 
-	void mark(HDC wdc, int x, int y, const COLORREF & color) {
+	void drawX(HDC wdc, int x, int y, const COLORREF & color) {
 		SetPixel(wdc, x + 1, y, color);
 		SetPixel(wdc, x, y + 1, color);
 		SetPixel(wdc, x, y - 1, color);
@@ -364,24 +368,63 @@ namespace RADAR {
 		return false;
 	}
 
-	POINT32 game2radar(const int32_t &X, const int32_t &Y, const float &c, const float &s) {
-		POINT32 p;
-		p.x = (X - playerPos.Xpos)* SCALE;
-		p.y = (Y - playerPos.Ypos)* SCALE;
-
-		double xnew = p.x * c - p.y * s;
-		double ynew = p.x * s + p.y * c;
-		p.x = xnew;
-		p.y = ynew;
-
-		p.x += centerX;
-		p.y += centerY;
-
-		return p;
+	inline POINT32 game2radar(const int32_t &X, const int32_t &Y, const float &c, const float &s) {
+		//move to player coord
+		float x = (X - playerPos.Xpos);
+		float y = (Y - playerPos.Ypos);
+		//scale
+		x *= SCALE;
+		y *= SCALE;
+		POINT32 ret;
+		//rotate (camera rot sin, cos)
+		ret.x = x * c - y * s;
+		ret.y = x * s + y * c;
+		//move to center
+		ret.x += centerX;
+		ret.y += centerY;
+		return ret;
 	}
 
-	void drawRadarTask() {
+	/*
+	 * draw triangle UP, triangle DOWN or rect based on height diff
+	 */
+	inline void drawEnemie(const DN3D::sSprite &sprite, const POINT32 & p) {
 
+		static const int ENEMY_SIZE = 5;
+		static const int ENEMY_height_delta = 10000;
+
+		if (sprite.posZ - ENEMY_height_delta > playerPos.Zpos) {
+			//monster-above -> triangleUP
+			POINT points[] = {
+				{ p.x - ENEMY_SIZE, p.y },
+				{ p.x,        p.y + ENEMY_SIZE },
+				{ p.x + ENEMY_SIZE, p.y }
+			};
+			Polygon(hMemDC, points, 3);
+		}
+		else if (sprite.posZ + ENEMY_height_delta < playerPos.Zpos) {
+			//triangleDown
+			POINT points[] = {
+				{ p.x - ENEMY_SIZE, p.y },
+				{ p.x,        p.y - ENEMY_SIZE },
+				{ p.x + ENEMY_SIZE, p.y }
+			};
+			Polygon(hMemDC, points, 3);
+			//same height-rect
+		}
+		else {
+			POINT points[] = {
+				{ p.x - ENEMY_SIZE, p.y },
+				{ p.x,        p.y + ENEMY_SIZE },
+				{ p.x + ENEMY_SIZE, p.y },
+				{ p.x,        p.y - ENEMY_SIZE },
+			};
+			Polygon(hMemDC, points, 4);
+		}
+	}
+
+	void drawRadarTask() 
+	{
 		//createwindow
 		std::thread t(RADAR::runWindowTask);
 
@@ -394,28 +437,38 @@ namespace RADAR {
 			}
 		}//----
 
+		const COLORREF COLOR_BLACK = RGB(0, 0, 0);
+		const COLORREF COLOR_SPRITE = RGB(25, 0, 25);
+		const COLORREF COLOR_ENEMIE = RGB(255, 0, 25);
+		const HBRUSH brushRED = CreateSolidBrush(RGB(250, 0, 0));
+		const HBRUSH brushBLACK = CreateSolidBrush(RGB(0, 0, 0));
+		const HBRUSH brushWHITE = CreateSolidBrush(RGB(255,255,255));		
+		const HBRUSH brushBG = CreateSolidBrush(GetBkColor(hMemDC));
+
 		//draw context
-		hdc = ::GetDC(window);
-		SetTextColor(hdc, COLOR_BLACK);
+		hDC = ::GetDC(window);
+		SetTextColor(hDC, COLOR_BLACK);
 		//--
 
 		//draw memory/bitmap context
-		memDC = CreateCompatibleDC(hdc);
+		hMemDC = CreateCompatibleDC(hDC);
+		SelectObject(hMemDC, brushBG);
 		resize();
-		
 		//--
 
-		const HBRUSH brushRED = CreateSolidBrush(RGB(250, 0, 0));
-		const HBRUSH brushWHITE = CreateSolidBrush(GetBkColor(memDC));
-
 		//canRun variables
+		int j = 0;
 		BITMAP bitmap;
 		CHAR text[44];
 		POINT32 p1, p2;
 		POINT arr[2];
 		float rotDegree, rotRad,s,c;
+		POINT32 p;
 		//--
 	
+		vector<int> enemies;
+		enemies.reserve(DN3D::MAXSPRITES);
+
 		while (canRun) {
 
 			Sleep(10);
@@ -427,66 +480,17 @@ namespace RADAR {
 			rotDegree = -rotDegree;
 			//--
 
-			rotRad = rotDegree*3.1415 / 180.0f;
+			rotRad = rotDegree*3.1415f / 180.0f;
 			s = sin(rotRad);
 			c = cos(rotRad);
 
-			Rectangle(memDC, rL, rT, rR, rB);
-			mark(memDC, centerX, centerY, COLOR_BLACK);
+			SelectObject(hMemDC, brushWHITE);
+			Rectangle(hMemDC, rL, rT, rR, rB);//background
+			SelectObject(hMemDC, brushBG);
 
-			for (int j = 0;
-				j < DN3D::MAXSPRITES;
-				j++) {
-
-				if ((sprite[j].cstat & 0b1000000000000000) == 0) continue; //visible
-
-				POINT32 p = game2radar(sprite[j].posX, sprite[j].posY, c, s);
-
-				if (isEnemy(sprite[j])) {
-					mark(memDC, p.x, p.y, COLOR_ENEMIE);
-
-					//draw triangle UP, triangle DOWN or rect based on height diff
-					const int SIZE = 5;
-					const int delta = 10000;
-					SelectObject(memDC, brushRED);
-					//monster-above -> triangleUP
-					if (sprite[j].posZ - delta > playerPos.Zpos)		{
-						POINT points[] = {
-						{ p.x - SIZE, p.y },
-						{ p.x,        p.y + SIZE },
-						{ p.x + SIZE, p.y }
-						};
-						Polygon(memDC, points, 3);
-						
-					//triangleDown
-					}else if (sprite[j].posZ+ delta < playerPos.Zpos)	{
-						POINT points[] = {
-							{ p.x - SIZE, p.y },
-							{ p.x,        p.y - SIZE },
-							{ p.x + SIZE, p.y }
-						};
-						Polygon(memDC, points, 3);
-					//same height-rect
-					}else {						
-						POINT points[] = {
-							{ p.x - SIZE, p.y },
-							{ p.x,        p.y + SIZE },
-							{ p.x + SIZE, p.y },
-						    { p.x,        p.y - SIZE },
-						};
-						Polygon(memDC, points, 4);
-					}
-					SelectObject(memDC, brushWHITE);
-
-				} else {
-					mark(memDC, p.x, p.y, COLOR_SPRITE);
-
-					_itoa_s(sprite[j].picnum, text, 10);
-					TextOutA(memDC, p.x, p.y, text, strlen(text));
-				}
-			}//for sprites
-
-			for (int j = 0;
+			//walls
+			//NOTE: not all walls are removed by engine after new level is loaded
+			for (j = 0;
 				 j<DN3D::MAXWALLS;
 				 j++) {
 
@@ -501,12 +505,43 @@ namespace RADAR {
 
 				arr[0] = { p1.x,p1.y };
 				arr[1] = { p2.x,p2.y };
-				Polyline(memDC, arr, 2);
+				Polyline(hMemDC, arr, 2);
 
 			}//for walls
 
+			enemies.clear();
+			for (j = 0;
+				j < DN3D::MAXSPRITES;
+				j++) {
+
+				if (isEnemy(sprite[j])) {
+					enemies.push_back(j);
+				}else{
+					//if ((sprite[j].cstat & 0b1000000000000000) == 0) continue; //is sprite visible
+
+					p = game2radar(sprite[j].posX, sprite[j].posY, c, s);
+
+					drawX(hMemDC, p.x, p.y, COLOR_SPRITE);
+
+					_itoa_s(sprite[j].picnum, text, 10);
+					TextOutA(hMemDC, p.x, p.y, text, (int)strlen(text));
+				}
+			}//for sprites
+
+            //draw enemies
+			HBRUSH hOldBrush = (HBRUSH)SelectObject(hMemDC, brushRED);
+			for (int j : enemies) {
+
+				p = game2radar(sprite[j].posX, sprite[j].posY, c, s);
+				drawEnemie(sprite[j], p);
+			}
+			SelectObject(hMemDC, hOldBrush);
+			//--
+
+			drawX(hMemDC, centerX, centerY, COLOR_BLACK);//player  (last=ON TOP)
+
 			GetObject(hBitmap, sizeof(bitmap), &bitmap);
-			BitBlt(hdc, 0, 0, bitmap.bmWidth, bitmap.bmHeight, memDC, 0, 0, SRCCOPY);
+			BitBlt(hDC, 0, 0, bitmap.bmWidth, bitmap.bmHeight, hMemDC, 0, 0, SRCCOPY);
 
 		}//while(canRun)
 
