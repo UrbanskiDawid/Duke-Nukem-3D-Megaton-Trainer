@@ -370,15 +370,15 @@ namespace RADAR {
 
 	inline POINT32 game2radar(const int32_t &X, const int32_t &Y, const float &c, const float &s) {
 		//move to player coord
-		float x = (X - playerPos.Xpos);
-		float y = (Y - playerPos.Ypos);
+		double x = (X - playerPos.Xpos);
+		double y = (Y - playerPos.Ypos);
 		//scale
 		x *= SCALE;
 		y *= SCALE;
 		POINT32 ret;
 		//rotate (camera rot sin, cos)
-		ret.x = x * c - y * s;
-		ret.y = x * s + y * c;
+		ret.x = (int32_t) (x * c - y * s);
+		ret.y = (int32_t) (x * s + y * c);
 		//move to center
 		ret.x += centerX;
 		ret.y += centerY;
@@ -438,12 +438,15 @@ namespace RADAR {
 		}//----
 
 		const COLORREF COLOR_BLACK = RGB(0, 0, 0);
+		const COLORREF COLOR_BLUE = RGB(0, 0, 255);
+		const COLORREF COLOR_RED = RGB(255, 0, 0);
 		const COLORREF COLOR_SPRITE = RGB(25, 0, 25);
 		const COLORREF COLOR_ENEMIE = RGB(255, 0, 25);
-		const HBRUSH brushRED = CreateSolidBrush(RGB(250, 0, 0));
-		const HBRUSH brushBLACK = CreateSolidBrush(RGB(0, 0, 0));
+		const HBRUSH brushRED = CreateSolidBrush(COLOR_RED);
+		const HBRUSH brushBLUE = CreateSolidBrush(COLOR_BLUE);		
+		const HBRUSH brushBLACK = CreateSolidBrush(COLOR_BLACK);
 		const HBRUSH brushWHITE = CreateSolidBrush(RGB(255,255,255));		
-		const HBRUSH brushBG = CreateSolidBrush(GetBkColor(hMemDC));
+		HBRUSH hOldBrush;
 
 		//draw context
 		hDC = ::GetDC(window);
@@ -452,7 +455,7 @@ namespace RADAR {
 
 		//draw memory/bitmap context
 		hMemDC = CreateCompatibleDC(hDC);
-		SelectObject(hMemDC, brushBG);
+		SelectObject(hMemDC, brushWHITE);
 		resize();
 		//--
 
@@ -486,7 +489,7 @@ namespace RADAR {
 
 			SelectObject(hMemDC, brushWHITE);
 			Rectangle(hMemDC, rL, rT, rR, rB);//background
-			SelectObject(hMemDC, brushBG);
+			SelectObject(hMemDC, brushWHITE);
 
 			//walls
 			//NOTE: not all walls are removed by engine after new level is loaded
@@ -529,7 +532,7 @@ namespace RADAR {
 			}//for sprites
 
             //draw enemies
-			HBRUSH hOldBrush = (HBRUSH)SelectObject(hMemDC, brushRED);
+			hOldBrush = (HBRUSH)SelectObject(hMemDC, brushRED);
 			for (int j : enemies) {
 
 				p = game2radar(sprite[j].posX, sprite[j].posY, c, s);
@@ -538,7 +541,8 @@ namespace RADAR {
 			SelectObject(hMemDC, hOldBrush);
 			//--
 
-			drawX(hMemDC, centerX, centerY, COLOR_BLACK);//player  (last=ON TOP)
+			drawX(hMemDC, centerX, centerY, COLOR_BLUE);//player  (last=ON TOP)
+			
 
 			GetObject(hBitmap, sizeof(bitmap), &bitmap);
 			BitBlt(hDC, 0, 0, bitmap.bmWidth, bitmap.bmHeight, hMemDC, 0, 0, SRCCOPY);
